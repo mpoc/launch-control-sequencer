@@ -22,19 +22,19 @@ GATE_LINE_MODES = [
     {
         'name': 'GATE',
         'current_step_color': COLORS['GREEN_3'],
-        'other_step_color': COLORS['GREEN_1'],
+        'other_step_color': COLORS['OFF'],
         'duty_cycle': 0.9,
     },
     {
         'name': 'TIE',
         'current_step_color': COLORS['YELLOW_3'],
-        'other_step_color': COLORS['YELLOW_1'],
+        'other_step_color': COLORS['YELLOW_2'],
         'duty_cycle': 1,
     },
     {
         'name': 'SILENT',
         'current_step_color': COLORS['RED_3'],
-        'other_step_color': COLORS['RED_1'],
+        'other_step_color': COLORS['RED_2'],
         'duty_cycle': 0,
     },
 ]
@@ -43,7 +43,7 @@ STEP_LINE_MODES = [
     {
         'name': 'STEP',
         'current_step_color': COLORS['GREEN_3'],
-        'other_step_color': COLORS['GREEN_1'],
+        'other_step_color': COLORS['OFF'],
         'played': True,
     },
     {
@@ -55,13 +55,13 @@ STEP_LINE_MODES = [
     {
         'name': 'RESET',
         'current_step_color': COLORS['RED_3'],
-        'other_step_color': COLORS['RED_1'],
+        'other_step_color': COLORS['RED_2'],
         'played': False,
     },
     {
         'name': 'STOP',
-        'current_step_color': COLORS['DARK_AMBER_3'],
-        'other_step_color': COLORS['AMBER_2'],
+        'current_step_color': COLORS['GREEN_3'],
+        'other_step_color': COLORS['GREEN_1'],
         'played': True,
     },
 ]
