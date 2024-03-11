@@ -23,16 +23,19 @@ GATE_LINE_MODES = [
         'name': 'GATE',
         'current_step_color': COLORS['GREEN_3'],
         'other_step_color': COLORS['GREEN_1'],
+        'duty_cycle': 0.9,
     },
     {
         'name': 'TIE',
         'current_step_color': COLORS['YELLOW_3'],
         'other_step_color': COLORS['YELLOW_1'],
+        'duty_cycle': 1,
     },
     {
         'name': 'SILENT',
         'current_step_color': COLORS['RED_3'],
         'other_step_color': COLORS['RED_1'],
+        'duty_cycle': 0,
     },
 ]
 
