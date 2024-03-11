@@ -199,6 +199,7 @@ class Sequencer:
             self.step_controllers[i].append(controller_obj)
 
         self.buttons = []
+        self.step_buttons = [[] for i in range(total_steps)]
         self.gate_line_buttons = []
         for i, button in enumerate(TRACK_FOCUS):
             button_obj = Button(
@@ -224,12 +225,42 @@ class Sequencer:
 
         clock.on_tick(self.step)
 
+    def get_next_step(self, current_step, initial_step=None):
+        if initial_step == current_step:
+            return current_step
+
+        if initial_step is None:
+            initial_step = current_step
+
+        next_step = (current_step + 1) % self.total_steps
+        current_step_button = self.step_line_buttons[current_step]
+        current_step_mode = current_step_button.modes[current_step_button.mode_index]
+        next_step_button = self.step_line_buttons[next_step]
+        next_step_mode = next_step_button.modes[next_step_button.mode_index]
+
+        if current_step_mode['name'] == 'STOP':
+            return current_step
+
+        if next_step_mode['name'] == 'RESET':
+            for step, step_line_button in enumerate(self.step_line_buttons):
+                if step_line_button.modes[step_line_button.mode_index]['played']:
+                    return step
+            return current_step
+        elif next_step_mode['name'] == 'SKIP':
+            return self.get_next_step(next_step, initial_step)
+        elif next_step_mode['name'] == 'STOP':
+            return next_step
+        elif next_step_mode['name'] == 'STEP':
+            return next_step
+        else:
+            return current_step
+
     def step(self):
-        new_step = (self.current_step + 1) % self.total_steps
+        new_step = self.get_next_step(self.current_step)
         self.current_step = new_step
         for i, step_controllers in enumerate(self.step_controllers):
             for controller in step_controllers:
-                controller.set_is_current_step(i == self.current_step)
+                controller.set_is_current_step(i == new_step)
 
 print('Output ports:', mido.get_output_names())
 launch_control_xl_output = [port for port in mido.get_output_names() if "Launch Control XL" in port][0]
