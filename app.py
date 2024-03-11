@@ -58,6 +58,12 @@ STEP_LINE_MODES = [
         'other_step_color': COLORS['RED_1'],
         'played': False,
     },
+    {
+        'name': 'STOP',
+        'current_step_color': COLORS['DARK_AMBER_3'],
+        'other_step_color': COLORS['AMBER_2'],
+        'played': True,
+    },
 ]
 
 class Button:
