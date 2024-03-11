@@ -41,16 +41,19 @@ STEP_LINE_MODES = [
         'name': 'STEP',
         'current_step_color': COLORS['GREEN_3'],
         'other_step_color': COLORS['GREEN_1'],
+        'played': True,
     },
     {
         'name': 'SKIP',
         'current_step_color': COLORS['YELLOW_3'],
         'other_step_color': COLORS['YELLOW_1'],
+        'played': False,
     },
     {
         'name': 'RESET',
         'current_step_color': COLORS['RED_3'],
         'other_step_color': COLORS['RED_1'],
+        'played': False,
     },
 ]
 
