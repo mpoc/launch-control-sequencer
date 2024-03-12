@@ -293,7 +293,7 @@ class Clock:
         old_time = self.time
         new_time = time.time()
         if new_time - old_time >= self.interval:
-            self.time = new_time
+            self.time = old_time + self.interval
             for on_tick in self.on_tick_callbacks:
                 on_tick()
 
