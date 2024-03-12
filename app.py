@@ -306,3 +306,4 @@ sequencer = Sequencer(total_steps=8, clock=clock)
 while True:
     receive_midi_message()
     clock.set_time()
+    time.sleep(0.001)
