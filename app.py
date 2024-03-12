@@ -255,12 +255,13 @@ class Sequencer:
         else:
             return current_step
 
-    def step(self):
-        new_step = self.get_next_step(self.current_step)
-        self.current_step = new_step
+    def step(self, step=None):
+        if step is None:
+            step = self.get_next_step(self.current_step)
+        self.current_step = step
         for i, step_controllers in enumerate(self.step_controllers):
             for controller in step_controllers:
-                controller.set_is_current_step(i == new_step)
+                controller.set_is_current_step(i == step)
 
 print('Output ports:', mido.get_output_names())
 launch_control_xl_output = [port for port in mido.get_output_names() if "Launch Control XL" in port][0]
