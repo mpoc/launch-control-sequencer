@@ -168,6 +168,7 @@ controllers = []
 class Sequencer:
     def __init__(self, total_steps, clock, current_step=0):
         self.total_steps = total_steps
+        self.clock = clock
         self.current_step = current_step
 
         self.step_controllers = [[] for i in range(total_steps)]
@@ -237,7 +238,7 @@ class Sequencer:
             self.step_controllers[i].append(button_obj)
             self.step_line_buttons.append(button_obj)
 
-        clock.on_tick(self.step)
+        self.clock.on_tick(self.step)
 
     def get_next_step(self, current_step, initial_step=None):
         if initial_step == current_step:
@@ -269,10 +270,39 @@ class Sequencer:
         else:
             return current_step
 
+    def get_step_info(self, step):
+        controllers = self.step_controllers[step]
+        note_controller = controllers[0]
+        cv1_controller = controllers[1]
+        duty_cycle = 0.9
+        return {
+            'note': note_controller.cc_value,
+            'cv1': cv1_controller.cc_value,
+            'duty_cycle': duty_cycle,
+        }
+
+    def trigger(self):
+        print('trigger on')
+        self.clock.once_time(0, lambda: print('trigger off'))
+
+    def gate(self, info):
+        # TODO: Scale and quantize
+        note = info['note'] or 64
+        cv1 = info['cv1'] or 64
+        print('gate on with note', note, 'cv1', cv1)
+        self.clock.once_time(info['duty_cycle'] * self.clock.interval, lambda: print('gate off'))
+
+    def output(self, info):
+        self.trigger()
+        self.gate(info)
+
     def step(self, step=None):
         if step is None:
             step = self.get_next_step(self.current_step)
         self.current_step = step
+
+        self.output(self.get_step_info(step))
+
         for i, step_controllers in enumerate(self.step_controllers):
             for controller in step_controllers:
                 controller.set_is_current_step(i == step)
@@ -302,19 +332,30 @@ class Clock:
         self.interval = 60 / bpm
         self.time = time.time()
         self.on_tick_callbacks = []
+        self.once_time_callbacks = []
 
     def set_time(self):
         old_time = self.time
         new_time = time.time()
-        if new_time - old_time >= self.interval:
+        diff = new_time - old_time
+
+        for at_time, callback in self.once_time_callbacks:
+            if diff >= at_time:
+                callback()
+                self.once_time_callbacks.remove((at_time, callback))
+
+        if diff >= self.interval:
             self.time = old_time + self.interval
-            for on_tick in self.on_tick_callbacks:
-                on_tick()
+            for callback in self.on_tick_callbacks:
+                callback()
 
-    def on_tick(self, on_tick):
-        self.on_tick_callbacks.append(on_tick)
+    def on_tick(self, callback):
+        self.on_tick_callbacks.append(callback)
 
-clock = Clock(bpm=240)
+    def once_time(self, at_time, callback):
+        self.once_time_callbacks.append((at_time, callback))
+
+clock = Clock(bpm=120)
 sequencer = Sequencer(total_steps=8, clock=clock)
 
 while True:
