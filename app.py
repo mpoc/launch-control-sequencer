@@ -67,7 +67,7 @@ STEP_LINE_MODES = [
 ]
 
 class Button:
-    def __init__(self, cc_number, led_index, modes, mode_index=0, cc_value=None, is_current_step=False):
+    def __init__(self, cc_number, led_index, modes, mode_index=0, cc_value=None, midi_channel=0, is_current_step=False):
         controllers.append(self)
         self.cc_number = cc_number
         self.cc_value = cc_value
@@ -75,6 +75,7 @@ class Button:
         self.modes = modes
         self.mode_count = len(modes)
         self.mode_index = mode_index
+        self.midi_channel = midi_channel
         self.is_current_step = is_current_step
         self.set_led_color()
 
@@ -85,7 +86,10 @@ class Button:
     def on_button_up(self):
         pass
 
-    def set_value(self, cc_number, cc_value):
+    def set_value(self, midi_channel, cc_number, cc_value):
+        if midi_channel != self.midi_channel:
+            return
+
         if cc_number != self.cc_number:
             return
 
@@ -114,15 +118,19 @@ class Button:
         setLedColor(outport, self.led_index, self.get_led_color())
 
 class Controller:
-    def __init__(self, cc_number, led_index, cc_value=None, is_current_step=False):
+    def __init__(self, cc_number, led_index, cc_value=None, midi_channel=0, is_current_step=False):
         controllers.append(self)
         self.cc_number = cc_number
         self.led_index = led_index
         self.cc_value = cc_value
+        self.midi_channel = midi_channel
         self.is_current_step = is_current_step
         self.set_led_color()
 
-    def set_value(self, cc_number, cc_value):
+    def set_value(self, midi_channel, cc_number, cc_value):
+        if midi_channel != self.midi_channel:
+            return
+
         if cc_number != self.cc_number:
             return
 
@@ -168,6 +176,7 @@ class Sequencer:
         for i, controller in enumerate(SEND_A):
             controller_obj = Controller(
                 cc_number=controller['cc_number'],
+                midi_channel=0,
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
@@ -176,6 +185,7 @@ class Sequencer:
         for i, controller in enumerate(SEND_B):
             controller_obj = Controller(
                 cc_number=controller['cc_number'],
+                midi_channel=0,
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
@@ -184,6 +194,7 @@ class Sequencer:
         for i, controller in enumerate(PAN_DEVICE):
             controller_obj = Controller(
                 cc_number=controller['cc_number'],
+                midi_channel=0,
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
@@ -192,6 +203,7 @@ class Sequencer:
         for i, controller in enumerate(FADERS):
             controller_obj = Controller(
                 cc_number=controller['cc_number'],
+                midi_channel=0,
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
@@ -204,6 +216,7 @@ class Sequencer:
         for i, button in enumerate(TRACK_FOCUS):
             button_obj = Button(
                 cc_number=button['cc_number'],
+                midi_channel=0,
                 led_index=button['led_index'],
                 modes=GATE_LINE_MODES,
                 is_current_step=i == current_step,
@@ -215,6 +228,7 @@ class Sequencer:
         for i, button in enumerate(TRACK_CONTROL):
             button_obj = Button(
                 cc_number=button['cc_number'],
+                midi_channel=0,
                 led_index=button['led_index'],
                 modes=STEP_LINE_MODES,
                 is_current_step=i == current_step,
@@ -280,7 +294,7 @@ def receive_midi_message():
     print(msg)
     if msg.is_cc():
         for controller in controllers:
-            controller.set_value(msg.control, msg.value)
+            controller.set_value(msg.channel, msg.control, msg.value)
 
 class Clock:
     def __init__(self, bpm):
