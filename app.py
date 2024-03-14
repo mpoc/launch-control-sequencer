@@ -70,14 +70,16 @@ STEP_LINE_MODES = [
 ]
 
 class Button:
-    def __init__(self, cc_number, led_index, modes=[], mode_index=0, cc_value=None, midi_channel=0, is_current_step=False, init=noop):
+    def __init__(self, cc_number, led_index, mode_groups={}, active_mode_group_name=None, active_mode_for_group={}, mode_index=0, cc_value=None, midi_channel=0, is_current_step=False, init=noop):
         controllers.append(self)
         self.cc_number = cc_number
         self.cc_value = cc_value
         self.led_index = led_index
-        self.modes = modes
-        self.mode_count = len(modes)
-        self.mode_index = mode_index
+
+        self.active_mode_group_name = active_mode_group_name
+        self.mode_groups = mode_groups
+        self.active_mode_for_group = {group_name: active_mode_for_group[group_name] if group_name in active_mode_for_group else 0 for group_name in mode_groups}
+
         self.midi_channel = midi_channel
         self.is_current_step = is_current_step
         self.on_button_down_callbacks = []
@@ -107,11 +109,13 @@ class Button:
             for callback in self.is_current_step_callbacks:
                 callback(self)
 
-    def get_step_led_color(self):
+    def get_led_color(self):
+        active_mode_group = self.mode_groups[self.active_mode_group_name]
+        active_mode = active_mode_group[self.active_mode_for_group[self.active_mode_group_name]]
         if self.is_current_step:
-            return self.modes[self.mode_index]['current_step_color']
+            return active_mode['current_step_color']
         else:
-            return self.modes[self.mode_index]['other_step_color']
+            return active_mode['other_step_color']
 
     def set_led_color(self, color=None):
         if self.led_index is None:
@@ -250,20 +254,23 @@ class Sequencer:
         self.gate_line_buttons = []
 
         def on_button_down_callback(button):
-            button.mode_index = (button.mode_index + 1) % button.mode_count
-            button.set_led_color(button.get_step_led_color())
+            mode_group = button.mode_groups[button.active_mode_group_name]
+            active_mode_index = button.active_mode_for_group[button.active_mode_group_name]
+            button.active_mode_for_group[button.active_mode_group_name] = (active_mode_index + 1) % len(mode_group)
+            button.set_led_color(button.get_led_color())
 
         def on_is_current_step_callback(button):
-            button.set_led_color(button.get_step_led_color())
+            button.set_led_color(button.get_led_color())
 
         for i, button in enumerate(TRACK_FOCUS):
             button_obj = Button(
                 cc_number=button['cc_number'],
                 midi_channel=0,
                 led_index=button['led_index'],
-                modes=GATE_LINE_MODES,
+                mode_groups={'gate': GATE_LINE_MODES},
+                active_mode_group_name='gate',
                 is_current_step=i == current_step,
-                init=lambda button: button.set_led_color(button.get_step_led_color())
+                init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
             button_obj.is_current_step_callbacks.append(on_is_current_step_callback)
@@ -276,9 +283,10 @@ class Sequencer:
                 cc_number=button['cc_number'],
                 midi_channel=0,
                 led_index=button['led_index'],
-                modes=STEP_LINE_MODES,
+                mode_groups={'step': STEP_LINE_MODES},
+                active_mode_group_name='step',
                 is_current_step=i == current_step,
-                init=lambda button: button.set_led_color(button.get_step_led_color())
+                init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
             button_obj.is_current_step_callbacks.append(on_is_current_step_callback)
@@ -322,16 +330,16 @@ class Sequencer:
 
         next_step = (current_step + 1) % self.total_steps
         current_step_button = self.step_line_buttons[current_step]
-        current_step_mode = current_step_button.modes[current_step_button.mode_index]
+        current_step_mode = current_step_button.mode_groups['step'][current_step_button.active_mode_for_group['step']]
         next_step_button = self.step_line_buttons[next_step]
-        next_step_mode = next_step_button.modes[next_step_button.mode_index]
+        next_step_mode = next_step_button.mode_groups['step'][next_step_button.active_mode_for_group['step']]
 
         if current_step_mode['name'] == 'STOP':
             return current_step
 
         if next_step_mode['name'] == 'RESET':
             for step, step_line_button in enumerate(self.step_line_buttons):
-                if step_line_button.modes[step_line_button.mode_index]['played']:
+                if step_line_button.mode_groups['step'][step_line_button.active_mode_for_group['step']]['played']:
                     return step
             return current_step
         elif next_step_mode['name'] == 'SKIP':
