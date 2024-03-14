@@ -3,7 +3,7 @@ import time
 from controller_config import *
 from colors import *
 
-def noop():
+def noop(*args, **kwargs):
     pass
 
 def colorComponentsToColorByte(components):
