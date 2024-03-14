@@ -306,8 +306,8 @@ class Sequencer:
 
     def gate(self, info):
         # TODO: Scale and quantize
-        note = info['note'] or 64
-        cv1 = info['cv1'] or 64
+        note = 64 if info['note'] is None else info['note']
+        cv1 = 64 if info['cv1'] is None else info['cv1']
         print('gate on with note', note, 'cv1', cv1)
         self.clock.once_time(info['duty_cycle'] * self.clock.interval, lambda: print('gate off'))
 
