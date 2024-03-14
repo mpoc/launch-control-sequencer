@@ -122,6 +122,35 @@ class Button:
 
         setLedColor(outport, self.led_index, color)
 
+class RadioButtons():
+    def __init__(self, buttons, selected_index=0, selected_color=COLORS['GREEN_3'], unselected_color=COLORS['OFF']):
+        self.buttons = buttons
+        self.selected_index = selected_index
+        self.selected_color = selected_color
+        self.unselected_color = unselected_color
+        self.selected_index_callbacks = []
+        self.set_led_colors()
+
+        for i, button in enumerate(buttons):
+            def on_button_down_callback(button, i=i):
+                self.set_selected_index(i)
+            button.on_button_down_callbacks.append(on_button_down_callback)
+
+    def set_selected_index(self, selected_index):
+        old_selected_index = self.selected_index
+        self.selected_index = selected_index
+        self.set_led_colors()
+        if old_selected_index != selected_index:
+            for callback in self.selected_index_callbacks:
+                callback(self)
+
+    def set_led_colors(self):
+        for i, button in enumerate(self.buttons):
+            if i == self.selected_index:
+                button.set_led_color(self.selected_color)
+            else:
+                button.set_led_color(self.unselected_color)
+
 class Controller:
     def __init__(self, cc_number, led_index, cc_value=None, midi_channel=0, is_current_step=False):
         controllers.append(self)
@@ -256,6 +285,31 @@ class Sequencer:
             self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.step_line_buttons.append(button_obj)
+
+        mode_buttons = RadioButtons(
+            buttons=[
+                Button(
+                    midi_channel=0,
+                    cc_number=DEVICE['cc_number'],
+                    led_index=DEVICE['led_index'],
+                ),
+                Button(
+                    midi_channel=0,
+                    cc_number=MUTE['cc_number'],
+                    led_index=MUTE['led_index'],
+                ),
+                Button(
+                    midi_channel=0,
+                    cc_number=SOLO['cc_number'],
+                    led_index=SOLO['led_index'],
+                ),
+                Button(
+                    midi_channel=0,
+                    cc_number=RECORD_ARM['cc_number'],
+                    led_index=RECORD_ARM['led_index'],
+                ),
+            ]
+        )
 
         self.clock.on_tick(self.step)
 
