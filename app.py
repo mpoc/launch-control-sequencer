@@ -70,7 +70,7 @@ STEP_LINE_MODES = [
 ]
 
 class Button:
-    def __init__(self, cc_number, led_index, mode_groups={}, active_mode_group_name=None, active_mode_for_group={}, mode_index=0, cc_value=None, midi_channel=0, is_current_step=False, init=noop):
+    def __init__(self, cc_number, led_index, mode_groups={}, active_mode_group_name=None, active_mode_for_group={}, cc_value=None, midi_channel=0, is_current_step=False, init=noop):
         controllers.append(self)
         self.cc_number = cc_number
         self.cc_value = cc_value
