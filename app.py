@@ -3,6 +3,9 @@ import time
 from controller_config import *
 from colors import *
 
+def noop():
+    pass
+
 def colorComponentsToColorByte(components):
     return components['red'] + (components['green'] << 4)
 
@@ -67,7 +70,7 @@ STEP_LINE_MODES = [
 ]
 
 class Button:
-    def __init__(self, cc_number, led_index, modes, mode_index=0, cc_value=None, midi_channel=0, is_current_step=False):
+    def __init__(self, cc_number, led_index, modes=[], mode_index=0, cc_value=None, midi_channel=0, is_current_step=False, init=noop):
         controllers.append(self)
         self.cc_number = cc_number
         self.cc_value = cc_value
@@ -77,14 +80,10 @@ class Button:
         self.mode_index = mode_index
         self.midi_channel = midi_channel
         self.is_current_step = is_current_step
-        self.set_led_color()
-
-    def on_button_down(self):
-        self.mode_index = (self.mode_index + 1) % self.mode_count
-        self.set_led_color()
-
-    def on_button_up(self):
-        pass
+        self.on_button_down_callbacks = []
+        self.on_button_up_callbacks = []
+        self.is_current_step_callbacks = []
+        init(self)
 
     def set_value(self, midi_channel, cc_number, cc_value):
         if midi_channel != self.midi_channel:
@@ -95,27 +94,33 @@ class Button:
 
         self.cc_value = cc_value
         if cc_value < 64:
-            self.on_button_up()
+            for callback in self.on_button_up_callbacks:
+                callback(self)
         elif cc_value >= 64:
-            self.on_button_down()
+            for callback in self.on_button_down_callbacks:
+                callback(self)
 
     def set_is_current_step(self, is_current_step):
         old_is_current_step = self.is_current_step
         self.is_current_step = is_current_step
         if old_is_current_step != is_current_step:
-            self.set_led_color()
+            for callback in self.is_current_step_callbacks:
+                callback(self)
 
-    def get_led_color(self):
+    def get_step_led_color(self):
         if self.is_current_step:
             return self.modes[self.mode_index]['current_step_color']
         else:
             return self.modes[self.mode_index]['other_step_color']
 
-    def set_led_color(self):
+    def set_led_color(self, color=None):
         if self.led_index is None:
             return
 
-        setLedColor(outport, self.led_index, self.get_led_color())
+        if color is None:
+            return
+
+        setLedColor(outport, self.led_index, color)
 
 class Controller:
     def __init__(self, cc_number, led_index, cc_value=None, midi_channel=0, is_current_step=False):
@@ -214,6 +219,14 @@ class Sequencer:
         self.buttons = []
         self.step_buttons = [[] for i in range(total_steps)]
         self.gate_line_buttons = []
+
+        def on_button_down_callback(button):
+            button.mode_index = (button.mode_index + 1) % button.mode_count
+            button.set_led_color(button.get_step_led_color())
+
+        def on_is_current_step_callback(button):
+            button.set_led_color(button.get_step_led_color())
+
         for i, button in enumerate(TRACK_FOCUS):
             button_obj = Button(
                 cc_number=button['cc_number'],
@@ -221,7 +234,10 @@ class Sequencer:
                 led_index=button['led_index'],
                 modes=GATE_LINE_MODES,
                 is_current_step=i == current_step,
+                init=lambda button: button.set_led_color(button.get_step_led_color())
             )
+            button_obj.on_button_down_callbacks.append(on_button_down_callback)
+            button_obj.is_current_step_callbacks.append(on_is_current_step_callback)
             self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.gate_line_buttons.append(button_obj)
@@ -233,7 +249,10 @@ class Sequencer:
                 led_index=button['led_index'],
                 modes=STEP_LINE_MODES,
                 is_current_step=i == current_step,
+                init=lambda button: button.set_led_color(button.get_step_led_color())
             )
+            button_obj.on_button_down_callbacks.append(on_button_down_callback)
+            button_obj.is_current_step_callbacks.append(on_is_current_step_callback)
             self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.step_line_buttons.append(button_obj)
