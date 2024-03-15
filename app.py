@@ -98,7 +98,7 @@ class Button:
         self.is_current_step_callbacks = []
         init(self)
 
-    def get_modeset(self, modeset_name):
+    def get_modeset(self, modeset_name: str):
         return self.modesets[modeset_name]
 
     def get_active_modeset(self):
@@ -110,21 +110,21 @@ class Button:
     def get_active_mode(self):
         return self.get_active_modeset()[self.get_active_mode_index()]
 
-    def get_active_mode_index_for_modeset(self, modeset_name):
+    def get_active_mode_index_for_modeset(self, modeset_name: str):
         return self.active_modeset_modes[modeset_name]
 
-    def get_active_mode_for_modeset(self, modeset_name):
+    def get_active_mode_for_modeset(self, modeset_name: str):
         return self.get_modeset(modeset_name)[self.get_active_mode_index_for_modeset(modeset_name)]
 
-    def set_active_modeset(self, modeset_name):
+    def set_active_modeset(self, modeset_name: str):
         self.active_modeset_name = modeset_name
         self.set_led_color(self.get_led_color())
 
-    def set_active_mode_index(self, modeset_name, active_mode_index):
+    def set_active_mode_index(self, modeset_name: str, active_mode_index: int):
         self.active_modeset_modes[modeset_name] = active_mode_index
         self.set_led_color(self.get_led_color())
 
-    def set_next_active_mode(self, modeset_name=None):
+    def set_next_active_mode(self, modeset_name: str=None):
         if modeset_name is None:
             modeset_name = self.active_modeset_name
         modeset = self.get_modeset(modeset_name)
@@ -239,7 +239,7 @@ class Controller:
 controllers = []
 
 class Sequencer:
-    def __init__(self, total_steps, clock, note_controller_row, cv_controller_rows=[], current_step=0):
+    def __init__(self, total_steps: int, clock, note_controller_row, cv_controller_rows=[], current_step=0):
         self.total_steps = total_steps
         self.clock = clock
         self.current_step = current_step
@@ -322,7 +322,7 @@ class Sequencer:
 
         self.clock.on_tick(self.step)
 
-    def get_next_step(self, current_step, initial_step=None):
+    def get_next_step(self, current_step: int, initial_step: int=None):
         if initial_step == current_step:
             return current_step
 
