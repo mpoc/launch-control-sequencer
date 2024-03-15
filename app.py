@@ -239,45 +239,30 @@ class Controller:
 controllers = []
 
 class Sequencer:
-    def __init__(self, total_steps, clock, current_step=0):
+    def __init__(self, total_steps, clock, note_controller_row, cv_controller_rows=[], current_step=0):
         self.total_steps = total_steps
         self.clock = clock
         self.current_step = current_step
 
         self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
 
-        for i, controller in enumerate(SEND_A):
-            controller_obj = Controller(
-                cc_number=controller['cc_number'],
+        for i in range(total_steps):
+            note_controller = note_controller_row[i]
+            self.step_controllers[i].append(Controller(
+                cc_number=note_controller['cc_number'],
                 midi_channel=0,
-                led_index=controller['led_index'],
+                led_index=note_controller['led_index'],
                 is_current_step=i == current_step,
-            )
-            self.step_controllers[i].append(controller_obj)
-        for i, controller in enumerate(SEND_B):
-            controller_obj = Controller(
-                cc_number=controller['cc_number'],
-                midi_channel=0,
-                led_index=controller['led_index'],
-                is_current_step=i == current_step,
-            )
-            self.step_controllers[i].append(controller_obj)
-        for i, controller in enumerate(PAN_DEVICE):
-            controller_obj = Controller(
-                cc_number=controller['cc_number'],
-                midi_channel=0,
-                led_index=controller['led_index'],
-                is_current_step=i == current_step,
-            )
-            self.step_controllers[i].append(controller_obj)
-        for i, controller in enumerate(FADERS):
-            controller_obj = Controller(
-                cc_number=controller['cc_number'],
-                midi_channel=0,
-                led_index=controller['led_index'],
-                is_current_step=i == current_step,
-            )
-            self.step_controllers[i].append(controller_obj)
+            ))
+
+            for cv_controllers in cv_controller_rows:
+                cv_controller = cv_controllers[i]
+                self.step_controllers[i].append(Controller(
+                    cc_number=cv_controller['cc_number'],
+                    midi_channel=0,
+                    led_index=cv_controller['led_index'],
+                    is_current_step=i == current_step,
+                ))
 
         self.buttons: list[Button] = []
         self.step_buttons: list[list[Button]] = [[] for i in range(total_steps)]
@@ -453,7 +438,16 @@ class Clock:
         self.once_time_callbacks.append((at_time, callback))
 
 clock = Clock(bpm=120)
-sequencer = Sequencer(total_steps=8, clock=clock)
+sequencer = Sequencer(
+    total_steps=8,
+    clock=clock,
+    note_controller_row=SEND_A,
+    cv_controller_rows=[
+        SEND_B,
+        PAN_DEVICE,
+        FADERS,
+    ],
+)
 
 while True:
     receive_midi_message()
