@@ -92,9 +92,9 @@ class Button:
 
         self.is_current_step = is_current_step
 
-        self.on_button_down_callbacks = []
-        self.on_button_up_callbacks = []
-        self.is_current_step_callbacks = []
+        self.on_button_down = []
+        self.on_button_up = []
+        self.on_step_change = []
 
         self.modesets = modesets
         self.active_modeset_name = active_modeset_name
@@ -145,10 +145,10 @@ class Button:
 
         self.cc_value = cc_value
         if cc_value < 64:
-            for callback in self.on_button_up_callbacks:
+            for callback in self.on_button_up:
                 callback(self)
         elif cc_value >= 64:
-            for callback in self.on_button_down_callbacks:
+            for callback in self.on_button_down:
                 callback(self)
 
     def set_is_current_step(self, is_current_step):
@@ -156,7 +156,7 @@ class Button:
         self.is_current_step = is_current_step
         self.set_led_color(self.get_led_color())
         if old_is_current_step != is_current_step:
-            for callback in self.is_current_step_callbacks:
+            for callback in self.on_step_change:
                 callback(self)
 
     def get_led_color(self):
@@ -173,7 +173,7 @@ class Button:
         setLedColor(outport, self.led_index, color)
 
 class RadioButtons():
-    def __init__(self, buttons, selected_index=0, selected_color=COLORS['GREEN_3'], unselected_color=COLORS['OFF']):
+    def __init__(self, buttons: list[Button], selected_index=0, selected_color=COLORS['GREEN_3'], unselected_color=COLORS['OFF']):
         self.buttons = buttons
         self.selected_index = selected_index
         self.selected_color = selected_color
@@ -184,7 +184,7 @@ class RadioButtons():
         for i, button in enumerate(buttons):
             def on_button_down_callback(button, i=i):
                 self.set_selected_index(i)
-            button.on_button_down_callbacks.append(on_button_down_callback)
+            button.on_button_down.append(on_button_down_callback)
 
     def set_selected_index(self, selected_index):
         old_selected_index = self.selected_index
@@ -281,7 +281,7 @@ class Sequencer:
                 active_modeset_name='gate',
                 is_current_step=i == current_step,
             )
-            button_obj.on_button_down_callbacks.append(on_button_down_callback)
+            button_obj.on_button_down.append(on_button_down_callback)
             self.step_controllers[i].append(button_obj)
             self.gate_line_buttons.append(button_obj)
         self.step_line_buttons: list[Button] = []
@@ -293,7 +293,7 @@ class Sequencer:
                 active_modeset_name='step',
                 is_current_step=i == current_step,
             )
-            button_obj.on_button_down_callbacks.append(on_button_down_callback)
+            button_obj.on_button_down.append(on_button_down_callback)
             self.step_controllers[i].append(button_obj)
             self.step_line_buttons.append(button_obj)
 
