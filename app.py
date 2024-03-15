@@ -83,20 +83,25 @@ TEST_LINE_MODES = [
 ]
 
 class Button:
-    def __init__(self, cc_number, led_index, modesets={}, active_modeset_name=None, active_modeset_modes={}, cc_value=None, midi_channel=0, is_current_step=False, init=noop):
+    def __init__(self, cc_number, led_index, modesets={}, active_modeset_name=None, active_modes={}, cc_value=None, midi_channel=0, is_current_step=False):
         controllers.append(self)
+        self.midi_channel = midi_channel
         self.cc_number = cc_number
         self.cc_value = cc_value
         self.led_index = led_index
-        self.modesets = modesets
-        self.active_modeset_name = active_modeset_name
-        self.active_modeset_modes = {modeset_name: active_modeset_modes[modeset_name] if modeset_name in active_modeset_modes else 0 for modeset_name in modesets}
-        self.midi_channel = midi_channel
+
         self.is_current_step = is_current_step
+
         self.on_button_down_callbacks = []
         self.on_button_up_callbacks = []
         self.is_current_step_callbacks = []
-        init(self)
+
+        self.modesets = modesets
+        self.active_modeset_name = active_modeset_name
+        self.active_modes = {}
+
+        for modeset_name in modesets:
+            self.set_active_mode_index(modeset_name, active_modes[modeset_name] if modeset_name in active_modes else 0)
 
     def get_modeset(self, modeset_name: str):
         return self.modesets[modeset_name]
@@ -105,13 +110,13 @@ class Button:
         return self.get_modeset(self.active_modeset_name)
 
     def get_active_mode_index(self):
-        return self.active_modeset_modes[self.active_modeset_name]
+        return self.active_modes[self.active_modeset_name]
 
     def get_active_mode(self):
         return self.get_active_modeset()[self.get_active_mode_index()]
 
     def get_active_mode_index_for_modeset(self, modeset_name: str):
-        return self.active_modeset_modes[modeset_name]
+        return self.active_modes[modeset_name]
 
     def get_active_mode_for_modeset(self, modeset_name: str):
         return self.get_modeset(modeset_name)[self.get_active_mode_index_for_modeset(modeset_name)]
@@ -121,7 +126,7 @@ class Button:
         self.set_led_color(self.get_led_color())
 
     def set_active_mode_index(self, modeset_name: str, active_mode_index: int):
-        self.active_modeset_modes[modeset_name] = active_mode_index
+        self.active_modes[modeset_name] = active_mode_index
         self.set_led_color(self.get_led_color())
 
     def set_next_active_mode(self, modeset_name: str=None):
@@ -275,7 +280,6 @@ class Sequencer:
                 modesets={'gate': GATE_LINE_MODES, 'test': TEST_LINE_MODES},
                 active_modeset_name='gate',
                 is_current_step=i == current_step,
-                init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
             self.step_controllers[i].append(button_obj)
@@ -288,7 +292,6 @@ class Sequencer:
                 modesets={'step': STEP_LINE_MODES},
                 active_modeset_name='step',
                 is_current_step=i == current_step,
-                init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
             self.step_controllers[i].append(button_obj)
