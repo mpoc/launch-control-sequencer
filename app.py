@@ -148,6 +148,7 @@ class Button:
     def set_is_current_step(self, is_current_step):
         old_is_current_step = self.is_current_step
         self.is_current_step = is_current_step
+        self.set_led_color(self.get_led_color())
         if old_is_current_step != is_current_step:
             for callback in self.is_current_step_callbacks:
                 callback(self)
@@ -299,9 +300,6 @@ class Sequencer:
             button.set_next_active_mode()
             button.set_led_color(button.get_led_color())
 
-        def on_is_current_step_callback(button):
-            button.set_led_color(button.get_led_color())
-
         for i, button in enumerate(TRACK_FOCUS):
             button_obj = Button(
                 cc_number=button['cc_number'],
@@ -313,7 +311,6 @@ class Sequencer:
                 init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
-            button_obj.is_current_step_callbacks.append(on_is_current_step_callback)
             self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.gate_line_buttons.append(button_obj)
@@ -329,7 +326,6 @@ class Sequencer:
                 init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
-            button_obj.is_current_step_callbacks.append(on_is_current_step_callback)
             self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.step_line_buttons.append(button_obj)
