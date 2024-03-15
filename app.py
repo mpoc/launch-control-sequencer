@@ -122,6 +122,7 @@ class Button:
 
     def set_active_mode_index(self, modeset_name, active_mode_index):
         self.active_modeset_modes[modeset_name] = active_mode_index
+        self.set_led_color(self.get_led_color())
 
     def set_next_active_mode(self, modeset_name=None):
         if modeset_name is None:
@@ -155,10 +156,7 @@ class Button:
 
     def get_led_color(self):
         active_mode = self.get_active_mode()
-        if self.is_current_step:
-            return active_mode['current_step_color']
-        else:
-            return active_mode['other_step_color']
+        return active_mode['current_step_color'] if self.is_current_step else active_mode['other_step_color']
 
     def set_led_color(self, color=None):
         if self.led_index is None:
@@ -228,15 +226,9 @@ class Controller:
 
     def get_led_color(self):
         if self.cc_value is None:
-            if self.is_current_step:
-                return COLORS['RED_3']
-            else:
-                return COLORS['RED_1']
+            return COLORS['RED_3'] if self.is_current_step else COLORS['RED_1']
         else:
-            if self.is_current_step:
-                return COLORS['GREEN_3']
-            else:
-                return COLORS['GREEN_1']
+            return COLORS['GREEN_3'] if self.is_current_step else COLORS['GREEN_1']
 
     def set_led_color(self):
         if self.led_index is None:
@@ -252,9 +244,9 @@ class Sequencer:
         self.clock = clock
         self.current_step = current_step
 
-        self.step_controllers = [[] for i in range(total_steps)]
+        self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
 
-        self.controllers = []
+        self.controllers: list[Controller | Button] = []
         for i, controller in enumerate(SEND_A):
             controller_obj = Controller(
                 cc_number=controller['cc_number'],
@@ -292,13 +284,12 @@ class Sequencer:
             self.controllers.append(controller_obj)
             self.step_controllers[i].append(controller_obj)
 
-        self.buttons = []
-        self.step_buttons = [[] for i in range(total_steps)]
-        self.gate_line_buttons = []
+        self.buttons: list[Button] = []
+        self.step_buttons: list[list[Button]] = [[] for i in range(total_steps)]
+        self.gate_line_buttons: list[Button] = []
 
-        def on_button_down_callback(button):
+        def on_button_down_callback(button: Button):
             button.set_next_active_mode()
-            button.set_led_color(button.get_led_color())
 
         for i, button in enumerate(TRACK_FOCUS):
             button_obj = Button(
@@ -314,7 +305,7 @@ class Sequencer:
             self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.gate_line_buttons.append(button_obj)
-        self.step_line_buttons = []
+        self.step_line_buttons: list[Button] = []
         for i, button in enumerate(TRACK_CONTROL):
             button_obj = Button(
                 cc_number=button['cc_number'],
