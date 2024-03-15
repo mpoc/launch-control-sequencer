@@ -151,6 +151,7 @@ class Button:
             for callback in self.on_button_down:
                 callback(self)
 
+    # This should probably be done by the Sequencer class
     def set_is_current_step(self, is_current_step):
         old_is_current_step = self.is_current_step
         self.is_current_step = is_current_step
@@ -244,12 +245,13 @@ class Controller:
 controllers = []
 
 class Sequencer:
-    def __init__(self, total_steps: int, clock, note_controller_row, cv_controller_rows=[], current_step=0):
+    def __init__(self, total_steps: int, clock, note_controller_row, button_row, cv_controller_rows=[], current_step=0):
         self.total_steps = total_steps
         self.clock = clock
         self.current_step = current_step
 
         self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
+        self.buttons: list[Button] = []
 
         for i in range(total_steps):
             note_controller = note_controller_row[i]
@@ -259,6 +261,18 @@ class Sequencer:
                 is_current_step=i == current_step,
             ))
 
+            button = button_row[i]
+            button_obj = Button(
+                cc_number=button['cc_number'],
+                led_index=button['led_index'],
+                modesets={'step': STEP_LINE_MODES, 'gate': GATE_LINE_MODES, 'test': TEST_LINE_MODES},
+                active_modeset_name='step',
+                is_current_step=i == current_step,
+            )
+            button_obj.on_button_down.append(lambda button: button.set_next_active_mode())
+            self.step_controllers[i].append(button_obj)
+            self.buttons.append(button_obj)
+
             for cv_controllers in cv_controller_rows:
                 cv_controller = cv_controllers[i]
                 self.step_controllers[i].append(Controller(
@@ -266,36 +280,6 @@ class Sequencer:
                     led_index=cv_controller['led_index'],
                     is_current_step=i == current_step,
                 ))
-
-        self.step_buttons: list[list[Button]] = [[] for i in range(total_steps)]
-        self.gate_line_buttons: list[Button] = []
-
-        def on_button_down_callback(button: Button):
-            button.set_next_active_mode()
-
-        for i, button in enumerate(TRACK_FOCUS):
-            button_obj = Button(
-                cc_number=button['cc_number'],
-                led_index=button['led_index'],
-                modesets={'gate': GATE_LINE_MODES, 'test': TEST_LINE_MODES},
-                active_modeset_name='gate',
-                is_current_step=i == current_step,
-            )
-            button_obj.on_button_down.append(on_button_down_callback)
-            self.step_controllers[i].append(button_obj)
-            self.gate_line_buttons.append(button_obj)
-        self.step_line_buttons: list[Button] = []
-        for i, button in enumerate(TRACK_CONTROL):
-            button_obj = Button(
-                cc_number=button['cc_number'],
-                led_index=button['led_index'],
-                modesets={'step': STEP_LINE_MODES},
-                active_modeset_name='step',
-                is_current_step=i == current_step,
-            )
-            button_obj.on_button_down.append(on_button_down_callback)
-            self.step_controllers[i].append(button_obj)
-            self.step_line_buttons.append(button_obj)
 
         mode_buttons = RadioButtons(
             buttons=[
@@ -307,11 +291,15 @@ class Sequencer:
                     cc_number=MUTE['cc_number'],
                     led_index=MUTE['led_index'],
                 ),
+                Button(
+                    cc_number=SOLO['cc_number'],
+                    led_index=SOLO['led_index'],
+                ),
             ]
         )
         def on_selected_index_callback(buttons, selected_index):
-            for button in self.gate_line_buttons:
-                button.set_active_modeset(['gate', 'test'][selected_index])
+            for button in self.buttons:
+                button.set_active_modeset(['step', 'gate', 'test'][selected_index])
         mode_buttons.selected_index_callbacks.append(on_selected_index_callback)
 
         self.clock.on_tick(self.step)
@@ -324,16 +312,16 @@ class Sequencer:
             initial_step = current_step
 
         next_step = (current_step + 1) % self.total_steps
-        current_step_button = self.step_line_buttons[current_step]
+        current_step_button = self.buttons[current_step]
         current_step_mode = current_step_button.get_active_mode_for_modeset('step')
-        next_step_button = self.step_line_buttons[next_step]
+        next_step_button = self.buttons[next_step]
         next_step_mode = next_step_button.get_active_mode_for_modeset('step')
 
         if current_step_mode['name'] == 'STOP':
             return current_step
 
         if next_step_mode['name'] == 'RESET':
-            for step, step_line_button in enumerate(self.step_line_buttons):
+            for step, step_line_button in enumerate(self.buttons):
                 if step_line_button.get_active_mode_for_modeset('step')['played']:
                     return step
             return current_step
@@ -436,6 +424,7 @@ sequencer = Sequencer(
     total_steps=8,
     clock=clock,
     note_controller_row=SEND_A,
+    button_row=TRACK_FOCUS,
     cv_controller_rows=[
         SEND_B,
         PAN_DEVICE,
