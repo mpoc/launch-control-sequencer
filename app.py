@@ -251,15 +251,19 @@ class Sequencer:
         self.current_step = current_step
 
         self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
+        self.note_controllers: list[Controller] = []
+        self.cv_controllers: list[list[Controller]] = [[] for i in range(total_steps)]
         self.buttons: list[Button] = []
 
         for i in range(total_steps):
             note_controller = note_controller_row[i]
-            self.step_controllers[i].append(Controller(
+            controller_obj = Controller(
                 cc_number=note_controller['cc_number'],
                 led_index=note_controller['led_index'],
                 is_current_step=i == current_step,
-            ))
+            )
+            self.step_controllers[i].append(controller_obj)
+            self.note_controllers.append(controller_obj)
 
             button = button_row[i]
             button_obj = Button(
@@ -275,11 +279,13 @@ class Sequencer:
 
             for cv_controllers in cv_controller_rows:
                 cv_controller = cv_controllers[i]
-                self.step_controllers[i].append(Controller(
+                controller_obj = Controller(
                     cc_number=cv_controller['cc_number'],
                     led_index=cv_controller['led_index'],
                     is_current_step=i == current_step,
-                ))
+                )
+                self.step_controllers[i].append(controller_obj)
+                self.cv_controllers[i].append(controller_obj)
 
         mode_buttons = RadioButtons(
             buttons=[
@@ -334,30 +340,34 @@ class Sequencer:
         else:
             return current_step
 
-    def get_step_info(self, step):
-        controllers = self.step_controllers[step]
-        note_controller = controllers[0]
-        cv1_controller = controllers[1]
-        duty_cycle = 0.9
+    def get_step_info(self, step: int):
+        note_controller = self.note_controllers[step]
+        cv1_controller = self.cv_controllers[step][1:2] and self.cv_controllers[step][1][0] or None
+        cv2_controller = self.cv_controllers[step][2:3] and self.cv_controllers[step][2][0] or None
+        cv3_controller = self.cv_controllers[step][3:4] and self.cv_controllers[step][3][0] or None
+        button = self.buttons[step]
         return {
-            'note': note_controller.cc_value,
-            'cv1': cv1_controller.cc_value,
-            'duty_cycle': duty_cycle,
+            'note': 64 if note_controller.cc_value is None else note_controller.cc_value,
+            'cv1': cv1_controller.cc_value if cv1_controller else 0,
+            'cv2': cv2_controller.cc_value if cv2_controller else 0,
+            'cv3': cv3_controller.cc_value if cv3_controller else 0,
+            'duty_cycle': button.get_active_mode_for_modeset('gate')['duty_cycle'],
         }
 
-    def trigger(self):
+    def trigger(self, info):
         print('trigger on')
         self.clock.once_time(0, lambda: print('trigger off'))
 
     def gate(self, info):
+        if info['duty_cycle'] == 0:
+            return
+
         # TODO: Scale and quantize
-        note = 64 if info['note'] is None else info['note']
-        cv1 = 64 if info['cv1'] is None else info['cv1']
-        print('gate on with note', note, 'cv1', cv1)
+        print(f'gate on with note {info["note"]}, cv1: {info["cv1"]}, cv2: {info["cv2"]}, cv3: {info["cv3"]}, duty cycle: {info["duty_cycle"]}')
         self.clock.once_time(info['duty_cycle'] * self.clock.interval, lambda: print('gate off'))
 
     def output(self, info):
-        self.trigger()
+        self.trigger(info)
         self.gate(info)
 
     def step(self, step=None):
