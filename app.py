@@ -246,7 +246,6 @@ class Sequencer:
 
         self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
 
-        self.controllers: list[Controller | Button] = []
         for i, controller in enumerate(SEND_A):
             controller_obj = Controller(
                 cc_number=controller['cc_number'],
@@ -254,7 +253,6 @@ class Sequencer:
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
-            self.controllers.append(controller_obj)
             self.step_controllers[i].append(controller_obj)
         for i, controller in enumerate(SEND_B):
             controller_obj = Controller(
@@ -263,7 +261,6 @@ class Sequencer:
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
-            self.controllers.append(controller_obj)
             self.step_controllers[i].append(controller_obj)
         for i, controller in enumerate(PAN_DEVICE):
             controller_obj = Controller(
@@ -272,7 +269,6 @@ class Sequencer:
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
-            self.controllers.append(controller_obj)
             self.step_controllers[i].append(controller_obj)
         for i, controller in enumerate(FADERS):
             controller_obj = Controller(
@@ -281,7 +277,6 @@ class Sequencer:
                 led_index=controller['led_index'],
                 is_current_step=i == current_step,
             )
-            self.controllers.append(controller_obj)
             self.step_controllers[i].append(controller_obj)
 
         self.buttons: list[Button] = []
