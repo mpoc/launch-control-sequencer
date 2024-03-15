@@ -250,7 +250,6 @@ class Sequencer:
             note_controller = note_controller_row[i]
             self.step_controllers[i].append(Controller(
                 cc_number=note_controller['cc_number'],
-                midi_channel=0,
                 led_index=note_controller['led_index'],
                 is_current_step=i == current_step,
             ))
@@ -259,12 +258,10 @@ class Sequencer:
                 cv_controller = cv_controllers[i]
                 self.step_controllers[i].append(Controller(
                     cc_number=cv_controller['cc_number'],
-                    midi_channel=0,
                     led_index=cv_controller['led_index'],
                     is_current_step=i == current_step,
                 ))
 
-        self.buttons: list[Button] = []
         self.step_buttons: list[list[Button]] = [[] for i in range(total_steps)]
         self.gate_line_buttons: list[Button] = []
 
@@ -274,7 +271,6 @@ class Sequencer:
         for i, button in enumerate(TRACK_FOCUS):
             button_obj = Button(
                 cc_number=button['cc_number'],
-                midi_channel=0,
                 led_index=button['led_index'],
                 modesets={'gate': GATE_LINE_MODES, 'test': TEST_LINE_MODES},
                 active_modeset_name='gate',
@@ -282,14 +278,12 @@ class Sequencer:
                 init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
-            self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.gate_line_buttons.append(button_obj)
         self.step_line_buttons: list[Button] = []
         for i, button in enumerate(TRACK_CONTROL):
             button_obj = Button(
                 cc_number=button['cc_number'],
-                midi_channel=0,
                 led_index=button['led_index'],
                 modesets={'step': STEP_LINE_MODES},
                 active_modeset_name='step',
@@ -297,19 +291,16 @@ class Sequencer:
                 init=lambda button: button.set_led_color(button.get_led_color())
             )
             button_obj.on_button_down_callbacks.append(on_button_down_callback)
-            self.buttons.append(button_obj)
             self.step_controllers[i].append(button_obj)
             self.step_line_buttons.append(button_obj)
 
         mode_buttons = RadioButtons(
             buttons=[
                 Button(
-                    midi_channel=0,
                     cc_number=DEVICE['cc_number'],
                     led_index=DEVICE['led_index'],
                 ),
                 Button(
-                    midi_channel=0,
                     cc_number=MUTE['cc_number'],
                     led_index=MUTE['led_index'],
                 ),
