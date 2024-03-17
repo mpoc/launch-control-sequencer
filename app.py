@@ -297,6 +297,7 @@ class Sequencer:
         self.total_steps = total_steps
         self.clock = clock
         self.current_step = current_step
+        self.is_gate_active = False
 
         self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
         self.note_controllers: list[Controller] = []
@@ -424,18 +425,37 @@ class Sequencer:
         }
 
     def output_trigger(self, step_info):
-        if step_info['duty_cycle'] == 0:
-            return
+        def trigger_on():
+            print('trigger on')
 
-        print('trigger on')
-        self.clock.once_time(0, lambda: print('trigger off'))
+        def trigger_off():
+            print('trigger off')
+
+        trigger_on()
+        self.clock.once_time(0, lambda: trigger_off())
 
     def output_gate(self, step_info, step_index):
+        def gate_on():
+            if self.is_gate_active:
+                return
+            self.output_trigger(step_info)
+            self.is_gate_active = True
+            print('gate on')
+
+        def gate_off():
+            if not self.is_gate_active:
+                return
+            self.is_gate_active = False
+            print('gate off')
+
         if step_info['duty_cycle'] == 0:
+            gate_off()
             return
 
-        print('gate on')
-        self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda: print('gate off'))
+        gate_on()
+
+        if step_info['duty_cycle'] < 1:
+            self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda: gate_off())
 
         for i, button in enumerate(self.buttons):
             button.set_is_gate_active(i == step_index)
@@ -463,7 +483,6 @@ class Sequencer:
         step_info = self.get_step_info(step_index)
         self.output_note(step_info)
         self.output_cvs(step_info)
-        self.output_trigger(step_info)
         self.output_gate(step_info, step_index)
 
         for i, step_controllers in enumerate(self.step_controllers):
