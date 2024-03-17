@@ -21,7 +21,7 @@ def setLedColor(port, ledIndex, color):
     msg = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, templateIndex, ledIndex, colorByte])
     port.send(msg)
 
-if_step_played = lambda played_color: lambda button: played_color if button.get_active_mode_for_modeset('step')['played'] else COLORS['OFF']
+if_step_played = lambda played_color: lambda button: played_color if button.is_step_played() else COLORS['OFF']
 
 GATE_LINE_MODES = [
     {
@@ -99,12 +99,15 @@ TEST_LINE_MODES = [
 ]
 
 class Button:
-    def __init__(self, cc_number, led_index, modesets={}, active_modeset_name=None, active_modes={}, cc_value=None, midi_channel=0, is_current_step=False, is_gate_active=False):
+    def __init__(self, cc_number, led_index, modesets={}, active_modeset_name=None, active_modes={}, cc_value=None, midi_channel=0, is_current_step=False, is_gate_active=False, sequencer=None, step_index=None):
         controllers.append(self)
         self.midi_channel = midi_channel
         self.cc_number = cc_number
         self.cc_value = cc_value
         self.led_index = led_index
+
+        self.sequencer = sequencer
+        self.step_index = step_index
 
         self.is_current_step = is_current_step
         self.is_gate_active = is_gate_active
@@ -119,6 +122,9 @@ class Button:
 
         for modeset_name in modesets:
             self.set_active_mode_index(modeset_name, active_modes[modeset_name] if modeset_name in active_modes else 0)
+
+    def __str__(self):
+        return f'Button(is_current_step={self.is_current_step} step_index={self.step_index}, is_gate_active={self.is_gate_active}, active_modeset_name={self.active_modeset_name})'
 
     def get_modeset(self, modeset_name: str):
         return self.modesets[modeset_name]
@@ -151,13 +157,20 @@ class Button:
             modeset_name = self.active_modeset_name
 
         # Disable changing gate mode with button press when step is not played
-        is_step_played = self.get_active_mode_for_modeset('step')['played']
-        if modeset_name == 'gate' and not is_step_played:
+        if modeset_name == 'gate' and not self.is_step_played():
             return
 
         modeset = self.get_modeset(modeset_name)
         active_mode_index = self.get_active_mode_index_for_modeset(modeset_name)
         self.set_active_mode_index(modeset_name, (active_mode_index + 1) % len(modeset))
+
+    def is_step_played(self):
+        first_reset_index = self.sequencer.get_first_reset_index()
+        is_after_reset = self.step_index > first_reset_index if first_reset_index is not None else False
+        if is_after_reset:
+            return False
+
+        return self.get_active_mode_for_modeset('step')['played']
 
     def set_value(self, midi_channel, cc_number, cc_value):
         if midi_channel != self.midi_channel:
@@ -236,12 +249,14 @@ class RadioButtons():
                 button.set_led_color(self.unselected_color)
 
 class Controller:
-    def __init__(self, cc_number, led_index, cc_value=None, midi_channel=0, is_current_step=False):
+    def __init__(self, cc_number, led_index, cc_value=None, midi_channel=0, is_current_step=False, sequencer=None, step_index=None):
         controllers.append(self)
         self.cc_number = cc_number
         self.led_index = led_index
         self.cc_value = cc_value
         self.midi_channel = midi_channel
+        self.sequencer = sequencer
+        self.step_index = step_index
         self.is_current_step = is_current_step
         self.set_led_color()
 
@@ -291,6 +306,8 @@ class Sequencer:
         for i in range(total_steps):
             note_controller = note_controller_row[i]
             controller_obj = Controller(
+                sequencer=self,
+                step_index=i,
                 cc_number=note_controller['cc_number'],
                 led_index=note_controller['led_index'],
                 is_current_step=i == current_step,
@@ -300,6 +317,8 @@ class Sequencer:
 
             button = button_row[i]
             button_obj = Button(
+                sequencer=self,
+                step_index=i,
                 cc_number=button['cc_number'],
                 led_index=button['led_index'],
                 modesets={'step': STEP_LINE_MODES, 'gate': GATE_LINE_MODES, 'test': TEST_LINE_MODES},
@@ -313,6 +332,8 @@ class Sequencer:
             for cv_controllers in cv_controller_rows:
                 cv_controller = cv_controllers[i]
                 controller_obj = Controller(
+                    sequencer=self,
+                    step_index=i,
                     cc_number=cv_controller['cc_number'],
                     led_index=cv_controller['led_index'],
                     is_current_step=i == current_step,
@@ -342,6 +363,14 @@ class Sequencer:
         mode_buttons.selected_index_callbacks.append(on_selected_index_callback)
 
         self.clock.on_tick(self.step)
+
+    def get_first_reset_index(self):
+        first_reset_index = None
+        for i, seq_button in enumerate(self.buttons):
+            if seq_button.get_active_mode_for_modeset('step')['name'] == 'RESET':
+                first_reset_index = i
+                break
+        return first_reset_index
 
     def get_next_step(self, current_step: int, initial_step: int=None):
         if initial_step == current_step:
