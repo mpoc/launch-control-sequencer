@@ -399,6 +399,7 @@ def receive_midi_message():
     if msg.is_cc():
         for controller in controllers:
             controller.set_value(msg.channel, msg.control, msg.value)
+    receive_midi_message()
 
 class Clock:
     def __init__(self, bpm):
