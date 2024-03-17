@@ -424,6 +424,13 @@ class Sequencer:
             'duty_cycle': button.get_active_mode_for_modeset('gate')['duty_cycle'],
         }
 
+    def output_pulse(self, on_callback, off_callback, start_time=0, end_time=0):
+        if start_time == 0:
+            on_callback()
+        else:
+            self.clock.once_time(start_time, lambda: on_callback())
+        self.clock.once_time(end_time, lambda: off_callback())
+
     def output_trigger(self, step_info):
         def trigger_on():
             print('trigger on')
@@ -431,8 +438,7 @@ class Sequencer:
         def trigger_off():
             print('trigger off')
 
-        trigger_on()
-        self.clock.once_time(0, lambda: trigger_off())
+        self.output_pulse(trigger_on, trigger_off)
 
     def output_gate(self, step_info, step_index):
         def gate_on():
@@ -452,10 +458,10 @@ class Sequencer:
             gate_off()
             return
 
-        gate_on()
-
         if step_info['duty_cycle'] < 1:
-            self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda: gate_off())
+            self.output_pulse(gate_on, gate_off, step_info['duty_cycle'] * self.clock.interval)
+        else:
+            gate_on()
 
         for i, button in enumerate(self.buttons):
             button.set_is_gate_active(i == step_index)
@@ -469,8 +475,13 @@ class Sequencer:
         print(f'cv1: {step_info["cv1"]}, cv2: {step_info["cv2"]}, cv3: {step_info["cv3"]}')
 
     def output_end_of_sequence(self):
-        print('end of sequence on')
-        self.clock.once_time(0, lambda: print('end of sequence off'))
+        def end_of_sequence_on():
+            print('end of sequence on')
+
+        def end_of_sequence_off():
+            print('end of sequence off')
+
+        self.output_pulse(end_of_sequence_on, end_of_sequence_off)
 
     def step(self, step_index=None):
         if step_index is None:
