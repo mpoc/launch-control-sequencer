@@ -448,11 +448,18 @@ class Sequencer:
     def output_cvs(self, step_info):
         print(f'cv1: {step_info["cv1"]}, cv2: {step_info["cv2"]}, cv3: {step_info["cv3"]}')
 
+    def output_end_of_sequence(self):
+        print('end of sequence on')
+        self.clock.once_time(0, lambda: print('end of sequence off'))
+
     def step(self, step_index=None):
         if step_index is None:
             step_index = self.get_next_step(self.current_step)
+        old_step = self.current_step
         self.current_step = step_index
 
+        if step_index <= old_step:
+            self.output_end_of_sequence()
         step_info = self.get_step_info(step_index)
         self.output_note(step_info)
         self.output_cvs(step_info)
