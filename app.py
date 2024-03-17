@@ -21,23 +21,35 @@ def setLedColor(port, ledIndex, color):
     msg = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, templateIndex, ledIndex, colorByte])
     port.send(msg)
 
+if_step_played = lambda played_color: lambda button: played_color if button.get_active_mode_for_modeset('step')['played'] else COLORS['OFF']
+
 GATE_LINE_MODES = [
     {
-        'name': 'GATE',
-        'current_step_color': COLORS['GREEN_3'],
-        'other_step_color': COLORS['OFF'],
+        'name': 'LONG',
+        'active_color': if_step_played(COLORS['GREEN_3']),
+        'inactive_color': if_step_played(COLORS['GREEN_1']),
+        'active_field': 'is_gate_active',
         'duty_cycle': 0.9,
     },
     {
+        'name': 'HALF',
+        'active_color': if_step_played(COLORS['AMBER_3']),
+        'inactive_color': if_step_played(COLORS['AMBER_2']),
+        'active_field': 'is_gate_active',
+        'duty_cycle': 0.5,
+    },
+    {
         'name': 'TIE',
-        'current_step_color': COLORS['YELLOW_3'],
-        'other_step_color': COLORS['YELLOW_2'],
+        'active_color': if_step_played(COLORS['YELLOW_3']),
+        'inactive_color': if_step_played(COLORS['YELLOW_2']),
+        'active_field': 'is_gate_active',
         'duty_cycle': 1,
     },
     {
         'name': 'SILENT',
-        'current_step_color': COLORS['RED_3'],
-        'other_step_color': COLORS['RED_2'],
+        'active_color': if_step_played(COLORS['OFF']),
+        'inactive_color': if_step_played(COLORS['RED_2']),
+        'active_field': 'is_current_step',
         'duty_cycle': 0,
     },
 ]
@@ -45,26 +57,30 @@ GATE_LINE_MODES = [
 STEP_LINE_MODES = [
     {
         'name': 'STEP',
-        'current_step_color': COLORS['GREEN_3'],
-        'other_step_color': COLORS['OFF'],
+        'active_color': COLORS['GREEN_3'],
+        'inactive_color': COLORS['OFF'],
+        'active_field': 'is_current_step',
         'played': True,
     },
     {
         'name': 'SKIP',
-        'current_step_color': COLORS['YELLOW_3'],
-        'other_step_color': COLORS['YELLOW_2'],
+        'active_color': COLORS['YELLOW_3'],
+        'inactive_color': COLORS['YELLOW_2'],
+        'active_field': 'is_current_step',
         'played': False,
     },
     {
         'name': 'RESET',
-        'current_step_color': COLORS['RED_3'],
-        'other_step_color': COLORS['RED_2'],
+        'active_color': COLORS['RED_3'],
+        'inactive_color': COLORS['RED_2'],
+        'active_field': 'is_current_step',
         'played': False,
     },
     {
         'name': 'STOP',
-        'current_step_color': COLORS['GREEN_3'],
-        'other_step_color': COLORS['GREEN_1'],
+        'active_color': COLORS['GREEN_3'],
+        'inactive_color': COLORS['GREEN_1'],
+        'active_field': 'is_current_step',
         'played': True,
     },
 ]
@@ -72,18 +88,18 @@ STEP_LINE_MODES = [
 TEST_LINE_MODES = [
     {
         'name': 'OFF',
-        'current_step_color': COLORS['RED_3'],
-        'other_step_color': COLORS['RED_3'],
+        'active_color': COLORS['RED_3'],
+        'active_field': None,
     },
     {
         'name': 'ON',
-        'current_step_color': COLORS['GREEN_3'],
-        'other_step_color': COLORS['GREEN_3'],
+        'active_color': COLORS['GREEN_3'],
+        'active_field': None,
     },
 ]
 
 class Button:
-    def __init__(self, cc_number, led_index, modesets={}, active_modeset_name=None, active_modes={}, cc_value=None, midi_channel=0, is_current_step=False):
+    def __init__(self, cc_number, led_index, modesets={}, active_modeset_name=None, active_modes={}, cc_value=None, midi_channel=0, is_current_step=False, is_gate_active=False):
         controllers.append(self)
         self.midi_channel = midi_channel
         self.cc_number = cc_number
@@ -91,6 +107,7 @@ class Button:
         self.led_index = led_index
 
         self.is_current_step = is_current_step
+        self.is_gate_active = is_gate_active
 
         self.on_button_down = []
         self.on_button_up = []
@@ -132,6 +149,12 @@ class Button:
     def set_next_active_mode(self, modeset_name: str=None):
         if modeset_name is None:
             modeset_name = self.active_modeset_name
+
+        # Disable changing gate mode with button press when step is not played
+        is_step_played = self.get_active_mode_for_modeset('step')['played']
+        if modeset_name == 'gate' and not is_step_played:
+            return
+
         modeset = self.get_modeset(modeset_name)
         active_mode_index = self.get_active_mode_index_for_modeset(modeset_name)
         self.set_active_mode_index(modeset_name, (active_mode_index + 1) % len(modeset))
@@ -160,9 +183,19 @@ class Button:
             for callback in self.on_step_change:
                 callback(self)
 
+    def set_is_gate_active(self, is_gate_active):
+        old_is_gate_active = self.is_gate_active
+        self.is_gate_active = is_gate_active
+        if old_is_gate_active != is_gate_active:
+            self.set_led_color(self.get_led_color())
+
     def get_led_color(self):
         active_mode = self.get_active_mode()
-        return active_mode['current_step_color'] if self.is_current_step else active_mode['other_step_color']
+        active_field_value = getattr(self, active_mode['active_field']) if active_mode['active_field'] else True
+        if active_field_value:
+            return callable(active_mode['active_color']) and active_mode['active_color'](self) or active_mode['active_color']
+        else:
+            return callable(active_mode['inactive_color']) and active_mode['inactive_color'](self) or active_mode['inactive_color']
 
     def set_led_color(self, color=None):
         if self.led_index is None:
@@ -341,47 +374,65 @@ class Sequencer:
             return current_step
 
     def get_step_info(self, step: int):
+        note = 0
         note_controller = self.note_controllers[step]
+        if note_controller.cc_value is not None:
+            note = note_controller.cc_value
+
         cvs = [0, 0, 0]
         for i, cv_controller in enumerate(self.cv_controllers[step]):
             value = cv_controller.cc_value
             if value is not None:
                 cvs[i] = cv_controller.cc_value
+
         button = self.buttons[step]
         return {
-            'note': note_controller.cc_value,
+            'note': note,
             'cv1': cvs[0],
             'cv2': cvs[1],
             'cv3': cvs[2],
             'duty_cycle': button.get_active_mode_for_modeset('gate')['duty_cycle'],
         }
 
-    def trigger(self, info):
+    def output_trigger(self, step_info):
+        if step_info['duty_cycle'] == 0:
+            return
+
         print('trigger on')
         self.clock.once_time(0, lambda: print('trigger off'))
 
-    def gate(self, info):
-        if info['duty_cycle'] == 0:
+    def output_gate(self, step_info, step_index):
+        if step_info['duty_cycle'] == 0:
             return
 
+        print('gate on')
+        self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda: print('gate off'))
+
+        for i, button in enumerate(self.buttons):
+            button.set_is_gate_active(i == step_index)
+            self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda button=button: button.set_is_gate_active(False))
+
+    def output_note(self, step_info):
         # TODO: Scale and quantize
-        print(f'gate on with note {info["note"]}, cv1: {info["cv1"]}, cv2: {info["cv2"]}, cv3: {info["cv3"]}, duty cycle: {info["duty_cycle"]}')
-        self.clock.once_time(info['duty_cycle'] * self.clock.interval, lambda: print('gate off'))
+        print('note', step_info['note'])
 
-    def output(self, info):
-        self.trigger(info)
-        self.gate(info)
+    def output_cvs(self, step_info):
+        print(f'cv1: {step_info["cv1"]}, cv2: {step_info["cv2"]}, cv3: {step_info["cv3"]}')
 
-    def step(self, step=None):
-        if step is None:
-            step = self.get_next_step(self.current_step)
-        self.current_step = step
+    def step(self, step_index=None):
+        if step_index is None:
+            step_index = self.get_next_step(self.current_step)
+        self.current_step = step_index
 
-        self.output(self.get_step_info(step))
+        step_info = self.get_step_info(step_index)
+        self.output_note(step_info)
+        self.output_cvs(step_info)
+        self.output_trigger(step_info)
+        self.output_gate(step_info, step_index)
 
         for i, step_controllers in enumerate(self.step_controllers):
             for controller in step_controllers:
-                controller.set_is_current_step(i == step)
+                controller.set_is_current_step(i == step_index)
 
 print('Output ports:', mido.get_output_names())
 launch_control_xl_output = [port for port in mido.get_output_names() if "Launch Control XL" in port][0]
