@@ -342,15 +342,17 @@ class Sequencer:
 
     def get_step_info(self, step: int):
         note_controller = self.note_controllers[step]
-        cv1_controller = self.cv_controllers[step][1:2] and self.cv_controllers[step][1][0] or None
-        cv2_controller = self.cv_controllers[step][2:3] and self.cv_controllers[step][2][0] or None
-        cv3_controller = self.cv_controllers[step][3:4] and self.cv_controllers[step][3][0] or None
+        cvs = [0, 0, 0]
+        for i, cv_controller in enumerate(self.cv_controllers[step]):
+            value = cv_controller.cc_value
+            if value is not None:
+                cvs[i] = cv_controller.cc_value
         button = self.buttons[step]
         return {
-            'note': 64 if note_controller.cc_value is None else note_controller.cc_value,
-            'cv1': cv1_controller.cc_value if cv1_controller else 0,
-            'cv2': cv2_controller.cc_value if cv2_controller else 0,
-            'cv3': cv3_controller.cc_value if cv3_controller else 0,
+            'note': note_controller.cc_value,
+            'cv1': cvs[0],
+            'cv2': cvs[1],
+            'cv3': cvs[2],
             'duty_cycle': button.get_active_mode_for_modeset('gate')['duty_cycle'],
         }
 
