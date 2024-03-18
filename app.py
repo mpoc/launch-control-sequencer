@@ -466,7 +466,7 @@ class Sequencer:
             return
 
         if step_info['duty_cycle'] < 1:
-            self.output_pulse(gate_on, gate_off, step_info['duty_cycle'] * self.clock.interval)
+            self.output_pulse(gate_on, gate_off, end_time=step_info['duty_cycle'] * self.clock.interval)
         else:
             gate_on()
 
