@@ -511,14 +511,12 @@ print('Launch Control XL input:', launch_control_xl_input)
 inport = mido.open_input(launch_control_xl_input)
 
 def receive_midi_message():
-    msg = inport.poll()
-    if msg is None:
-        return
-    print(msg)
-    if msg.is_cc():
+    while msg := inport.poll():
+        print(msg)
+        if not msg.is_cc():
+            continue
         for controller in controllers:
             controller.set_value(msg.channel, msg.control, msg.value)
-    receive_midi_message()
 
 class Clock:
     def __init__(self, bpm):
