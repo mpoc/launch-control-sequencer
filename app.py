@@ -5,6 +5,8 @@ from controller_config import *
 from colors import *
 
 DEBUG = os.environ.get('DEBUG')
+BPM = int(os.environ.get('BPM', 240))
+
 def debug_print(*args, **kwargs):
     if not DEBUG:
         return
@@ -554,7 +556,7 @@ class Clock:
     def once_time(self, at_time, callback):
         self.once_time_callbacks.append((at_time, callback))
 
-clock = Clock(bpm=120)
+clock = Clock(bpm=BPM)
 sequencer = Sequencer(
     total_steps=8,
     clock=clock,
