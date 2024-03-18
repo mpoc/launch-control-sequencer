@@ -1,7 +1,14 @@
 import mido
 import time
+import os
 from controller_config import *
 from colors import *
+
+DEBUG = os.environ.get('DEBUG')
+def debug_print(*args, **kwargs):
+    if not DEBUG:
+        return
+    print(*args, **kwargs)
 
 def noop(*args, **kwargs):
     pass
@@ -433,10 +440,10 @@ class Sequencer:
 
     def output_trigger(self, step_info):
         def trigger_on():
-            print('trigger on')
+            debug_print('trigger on')
 
         def trigger_off():
-            print('trigger off')
+            debug_print('trigger off')
 
         self.output_pulse(trigger_on, trigger_off)
 
@@ -446,13 +453,13 @@ class Sequencer:
                 return
             self.output_trigger(step_info)
             self.is_gate_active = True
-            print('gate on')
+            debug_print('gate on')
 
         def gate_off():
             if not self.is_gate_active:
                 return
             self.is_gate_active = False
-            print('gate off')
+            debug_print('gate off')
 
         if step_info['duty_cycle'] == 0:
             gate_off()
@@ -469,17 +476,17 @@ class Sequencer:
 
     def output_note(self, step_info):
         # TODO: Scale and quantize
-        print('note', step_info['note'])
+        debug_print('note', step_info['note'])
 
     def output_cvs(self, step_info):
-        print(f'cv1: {step_info["cv1"]}, cv2: {step_info["cv2"]}, cv3: {step_info["cv3"]}')
+        debug_print(f'cv1: {step_info["cv1"]}, cv2: {step_info["cv2"]}, cv3: {step_info["cv3"]}')
 
     def output_end_of_sequence(self):
         def end_of_sequence_on():
-            print('end of sequence on')
+            debug_print('end of sequence on')
 
         def end_of_sequence_off():
-            print('end of sequence off')
+            debug_print('end of sequence off')
 
         self.output_pulse(end_of_sequence_on, end_of_sequence_off)
 
@@ -512,7 +519,7 @@ inport = mido.open_input(launch_control_xl_input)
 
 def receive_midi_message():
     while msg := inport.poll():
-        print(msg)
+        debug_print(msg)
         if not msg.is_cc():
             continue
         for controller in controllers:
