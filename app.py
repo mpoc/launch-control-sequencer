@@ -422,7 +422,7 @@ class Sequencer:
         for i, cv_controller in enumerate(self.cv_controllers[step]):
             value = cv_controller.cc_value
             if value is not None:
-                cvs[i] = cv_controller.cc_value
+                cvs[i] = value
 
         button = self.buttons[step]
         return {
