@@ -25,11 +25,11 @@ def color_byte_to_color_components(byte):
         'green': byte >> 4,
     }
 
-def set_led_color(port, ledIndex, color):
-    colorByte = color_components_to_color_byte(color)
-    templateIndex = 0
-    msg = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, templateIndex, ledIndex, colorByte])
-    port.send(msg)
+def set_led_color(led_index, color):
+    color_byte = color_components_to_color_byte(color)
+    template_index = 0
+    msg = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, template_index, led_index, color_byte])
+    outport.send(msg)
 
 CV1_CC = 52
 CV2_CC = 53
@@ -242,7 +242,7 @@ class Button:
         if color is None:
             return
 
-        set_led_color(outport, self.led_index, color)
+        set_led_color(self.led_index, color)
 
 class RadioButtons():
     def __init__(self, buttons: list[Button], selected_index=0, selected_color=COLORS['GREEN_3'], unselected_color=COLORS['OFF']):
@@ -313,7 +313,7 @@ class Controller:
         if self.led_index is None:
             return
 
-        set_led_color(outport, self.led_index, self.get_led_color())
+        set_led_color(self.led_index, self.get_led_color())
 
 controllers = []
 
