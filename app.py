@@ -16,17 +16,17 @@ def debug_print(*args, **kwargs):
 def noop(*args, **kwargs):
     pass
 
-def colorComponentsToColorByte(components):
+def color_components_to_color_byte(components):
     return components['red'] + (components['green'] << 4)
 
-def colorByteToColorComponents(byte):
+def color_byte_to_color_components(byte):
     return {
         'red': byte & 15,
         'green': byte >> 4,
     }
 
-def setLedColor(port, ledIndex, color):
-    colorByte = colorComponentsToColorByte(color)
+def set_led_color(port, ledIndex, color):
+    colorByte = color_components_to_color_byte(color)
     templateIndex = 0
     msg = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, templateIndex, ledIndex, colorByte])
     port.send(msg)
@@ -242,7 +242,7 @@ class Button:
         if color is None:
             return
 
-        setLedColor(outport, self.led_index, color)
+        set_led_color(outport, self.led_index, color)
 
 class RadioButtons():
     def __init__(self, buttons: list[Button], selected_index=0, selected_color=COLORS['GREEN_3'], unselected_color=COLORS['OFF']):
@@ -313,7 +313,7 @@ class Controller:
         if self.led_index is None:
             return
 
-        setLedColor(outport, self.led_index, self.get_led_color())
+        set_led_color(outport, self.led_index, self.get_led_color())
 
 controllers = []
 
