@@ -496,7 +496,8 @@ class Sequencer:
 
         for i, button in enumerate(self.buttons):
             button.set_is_gate_active(i == step_index)
-            self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda button=button: button.set_is_gate_active(False))
+            if step_info['duty_cycle'] < 1:
+                self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda button=button: button.set_is_gate_active(False))
 
     def output_note(self, step_info):
         def note_on():
