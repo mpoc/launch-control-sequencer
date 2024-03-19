@@ -1,6 +1,7 @@
 import mido
 import time
 import os
+import serial
 from controller_config import *
 from colors import *
 
@@ -29,6 +30,21 @@ def setLedColor(port, ledIndex, color):
     templateIndex = 0
     msg = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, templateIndex, ledIndex, colorByte])
     port.send(msg)
+
+CV1_CC = 52
+CV2_CC = 53
+CV3_CC = 54
+GATE_CC = 61
+TRIGGER_CC = 62
+RUN_CC = 63
+RESET_CC = 64
+END_OF_SEQUENCE_CC = 65
+
+def send_midi_message(message: mido.Message):
+    if midi_out is None:
+        debug_print('OUT:', message)
+    else:
+        midi_out.write(message.bytes())
 
 if_step_played = lambda played_color: lambda button: played_color if button.is_step_played() else COLORS['OFF']
 
@@ -443,9 +459,11 @@ class Sequencer:
     def output_trigger(self, step_info):
         def trigger_on():
             debug_print('trigger on')
+            send_midi_message(mido.Message('control_change', channel=0, control=TRIGGER_CC, value=127))
 
         def trigger_off():
             debug_print('trigger off')
+            send_midi_message(mido.Message('control_change', channel=0, control=TRIGGER_CC, value=0))
 
         self.output_pulse(trigger_on, trigger_off)
 
@@ -455,13 +473,17 @@ class Sequencer:
                 return
             self.output_trigger(step_info)
             self.is_gate_active = True
+
             debug_print('gate on')
+            send_midi_message(mido.Message('control_change', channel=0, control=GATE_CC, value=127))
 
         def gate_off():
             if not self.is_gate_active:
                 return
             self.is_gate_active = False
+
             debug_print('gate off')
+            send_midi_message(mido.Message('control_change', channel=0, control=GATE_CC, value=0))
 
         if step_info['duty_cycle'] == 0:
             gate_off()
@@ -477,18 +499,30 @@ class Sequencer:
             self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda button=button: button.set_is_gate_active(False))
 
     def output_note(self, step_info):
-        # TODO: Scale and quantize
-        debug_print('note', step_info['note'])
+        def note_on():
+            # TODO: Scale and quantize
+            debug_print('note', step_info['note'])
+            send_midi_message(mido.Message('note_on', channel=0, note=step_info['note'], velocity=127))
+
+        def note_off():
+            send_midi_message(mido.Message('note_off', channel=0, note=step_info['note'], velocity=127))
+
+        self.output_pulse(note_on, note_off)
 
     def output_cvs(self, step_info):
         debug_print(f'cv1: {step_info["cv1"]}, cv2: {step_info["cv2"]}, cv3: {step_info["cv3"]}')
+        send_midi_message(mido.Message('control_change', channel=0, control=CV1_CC, value=step_info['cv1']))
+        send_midi_message(mido.Message('control_change', channel=0, control=CV2_CC, value=step_info['cv2']))
+        send_midi_message(mido.Message('control_change', channel=0, control=CV3_CC, value=step_info['cv3']))
 
     def output_end_of_sequence(self):
         def end_of_sequence_on():
             debug_print('end of sequence on')
+            send_midi_message(mido.Message('control_change', channel=0, control=END_OF_SEQUENCE_CC, value=127))
 
         def end_of_sequence_off():
             debug_print('end of sequence off')
+            send_midi_message(mido.Message('control_change', channel=0, control=END_OF_SEQUENCE_CC, value=0))
 
         self.output_pulse(end_of_sequence_on, end_of_sequence_off)
 
@@ -519,9 +553,12 @@ launch_control_xl_input = [port for port in mido.get_input_names() if 'Launch Co
 print('Launch Control XL input:', launch_control_xl_input)
 inport = mido.open_input(launch_control_xl_input)
 
+midi_out_device = '/dev/serial0'
+midi_out = os.path.exists(midi_out_device) and serial.Serial(midi_out_device, baudrate=31250) or None
+
 def receive_midi_message():
     while msg := inport.poll():
-        debug_print(msg)
+        debug_print('IN:', msg)
         if not msg.is_cc():
             continue
         for controller in controllers:
