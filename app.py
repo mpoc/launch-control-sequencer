@@ -395,6 +395,14 @@ class Sequencer:
 
         self.clock.on_tick(self.step)
 
+        tempo_button = Button(
+            cc_number=RIGHT['cc_number'],
+            led_index=RIGHT['led_index'],
+        )
+        tempo_button.set_led_color(COLORS['RED_3'])
+        self.clock.on_tick(lambda: tempo_button.set_led_color(COLORS['RED_3']))
+        self.clock.on_interval_percent(0.5, lambda: tempo_button.set_led_color(COLORS['OFF']))
+
     def get_first_reset_index(self):
         first_reset_index = None
         for i, seq_button in enumerate(self.buttons):
@@ -620,6 +628,10 @@ class Clock:
         self.time = time.time()
         self.on_tick_callbacks = []
         self.once_time_callbacks = []
+        self.on_interval_percent_callbacks = []
+        self.on_interval_percent_callbacks_to_call = []
+
+        self.on_tick(self.reset_on_interval_percent_callbacks)
 
     def set_time(self):
         old_time = self.time
@@ -631,6 +643,12 @@ class Clock:
                 callback()
                 self.once_time_callbacks.remove((at_time, callback))
 
+        for callback_tuple in self.on_interval_percent_callbacks:
+            percent, callback = callback_tuple
+            if diff >= self.interval * percent and callback_tuple in self.on_interval_percent_callbacks_to_call:
+                callback()
+                self.on_interval_percent_callbacks_to_call.remove(callback_tuple)
+
         if diff >= self.interval:
             self.time = old_time + self.interval
             for callback in self.on_tick_callbacks:
@@ -641,6 +659,13 @@ class Clock:
 
     def once_time(self, at_time, callback):
         self.once_time_callbacks.append((at_time, callback))
+
+    def on_interval_percent(self, percent, callback):
+        self.on_interval_percent_callbacks.append((percent, callback))
+        self.reset_on_interval_percent_callbacks()
+
+    def reset_on_interval_percent_callbacks(self):
+        self.on_interval_percent_callbacks_to_call = [callback for callback in self.on_interval_percent_callbacks if callback[0] * self.interval > time.time() - self.time]
 
 clock = Clock(bpm=BPM)
 sequencer = Sequencer(
