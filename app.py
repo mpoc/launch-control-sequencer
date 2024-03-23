@@ -409,6 +409,13 @@ class Sequencer:
 
         tempo_button.on_button_down.append(self.add_tempo_tap)
 
+        reset_button = Button(
+            cc_number=DOWN['cc_number'],
+            led_index=DOWN['led_index'],
+        )
+        reset_button.set_led_color(COLORS['RED_3'])
+        reset_button.on_button_down.append(self.reset)
+
     def add_tempo_tap(self, button):
         now = time.time()
 
@@ -428,6 +435,11 @@ class Sequencer:
 
         self.clock.bpm = bpm
         self.clock.interval = interval
+
+    def reset(self, button):
+        self.is_gate_active = False
+        self.clock.reset()
+        self.step(0)
 
     def get_first_reset_index(self):
         first_reset_index = None
@@ -660,6 +672,9 @@ class Clock:
         self.on_interval_percent_callbacks_to_call = []
 
         self.on_tick(self.reset_on_interval_percent_callbacks)
+
+    def reset(self):
+        self.time = time.time()
 
     def set_time(self):
         old_time = self.time
