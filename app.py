@@ -505,6 +505,9 @@ class Sequencer:
                 self.clock.once_time(step_info['duty_cycle'] * self.clock.interval, lambda button=button: button.set_is_gate_active(False))
 
     def output_note(self, step_info):
+        if self.buttons[self.current_step].get_active_mode_for_modeset('gate')['name'] == 'SILENT':
+            return
+
         def note_on():
             # TODO: Scale and quantize
             debug_print('note', step_info['note'])
@@ -516,6 +519,9 @@ class Sequencer:
         self.output_pulse(note_on, note_off)
 
     def output_cvs(self, step_info):
+        if self.buttons[self.current_step].get_active_mode_for_modeset('gate')['name'] == 'SILENT':
+            return
+
         debug_print(f'cv1: {step_info["cv1"]}, cv2: {step_info["cv2"]}, cv3: {step_info["cv3"]}')
         send_midi_message(mido.Message('control_change', channel=0, control=CV1_CC, value=step_info['cv1']))
         send_midi_message(mido.Message('control_change', channel=0, control=CV2_CC, value=step_info['cv2']))
