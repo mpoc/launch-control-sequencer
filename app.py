@@ -59,16 +59,9 @@ if_step_played = lambda played_color: lambda button: played_color if button.is_s
 
 GATE_LINE_MODES = [
     {
-        'name': 'LONG',
+        'name': 'HALF',
         'active_color': if_step_played(COLORS['GREEN_3']),
         'inactive_color': if_step_played(COLORS['GREEN_1']),
-        'active_field': 'is_gate_active',
-        'duty_cycle': 0.9,
-    },
-    {
-        'name': 'HALF',
-        'active_color': if_step_played(COLORS['AMBER_3']),
-        'inactive_color': if_step_played(COLORS['AMBER_2']),
         'active_field': 'is_gate_active',
         'duty_cycle': 0.5,
     },
