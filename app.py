@@ -2,6 +2,7 @@ import mido
 import time
 import os
 import serial
+import collections
 from controller_config import *
 from colors import *
 
@@ -401,7 +402,32 @@ class Sequencer:
         )
         tempo_button.set_led_color(COLORS['RED_3'])
         self.clock.on_tick(lambda: tempo_button.set_led_color(COLORS['RED_3']))
-        self.clock.on_interval_percent(0.5, lambda: tempo_button.set_led_color(COLORS['OFF']))
+        self.clock.on_interval_percent(0.2, lambda: tempo_button.set_led_color(COLORS['OFF']))
+
+        self.TAP_COUNT = 4
+        self.interval_shift_register = collections.deque([], self.TAP_COUNT)
+
+        tempo_button.on_button_down.append(self.add_tempo_tap)
+
+    def add_tempo_tap(self, button):
+        now = time.time()
+
+        if len(self.interval_shift_register) > 0 and now - self.interval_shift_register[-1] > 3:
+            print('clearing tempo register')
+            self.interval_shift_register.clear()
+
+        self.interval_shift_register.append(now)
+
+        if len(self.interval_shift_register) < self.TAP_COUNT:
+            return
+
+        interval = (self.interval_shift_register[-1] - self.interval_shift_register[0]) / (self.TAP_COUNT - 1)
+        bpm = 60 / interval
+
+        print('bpm', bpm, 'interval', interval)
+
+        self.clock.bpm = bpm
+        self.clock.interval = interval
 
     def get_first_reset_index(self):
         first_reset_index = None
@@ -411,7 +437,7 @@ class Sequencer:
                 break
         return first_reset_index
 
-    def get_next_step(self, current_step: int, initial_step: int=None):
+    def get_next_step(self, current_step: int, initial_step: int | None=None):
         if initial_step == current_step:
             return current_step
 
@@ -589,7 +615,7 @@ def get_ports():
     try:
         input_port_names = mido.get_input_names()
         output_port_names = mido.get_output_names()
-    except:
+    except Exception as e:
         print('Failed to get ports')
         return None, None
 
