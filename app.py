@@ -25,11 +25,19 @@ def color_byte_to_color_components(byte):
         'green': byte >> 4,
     }
 
+def send_usb_midi_message(message: mido.Message):
+    try:
+        inport, outport = get_ports()
+        if outport:
+            outport.send(message)
+    except Exception as e:
+        reset_ports()
+
 def set_led_color(led_index, color):
     color_byte = color_components_to_color_byte(color)
     template_index = 0
-    msg = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, template_index, led_index, color_byte])
-    outport.send(msg)
+    message = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, template_index, led_index, color_byte])
+    send_usb_midi_message(message)
 
 CV1_CC = 52
 CV2_CC = 53
@@ -544,24 +552,58 @@ class Sequencer:
             for controller in step_controllers:
                 controller.set_is_current_step(i == step_index)
 
-def receive_midi_message(msg: mido.Message):
-    debug_print('IN:', msg)
+def receive_midi_message(message: mido.Message):
+    debug_print('IN:', message)
 
-    if not msg.is_cc():
+    if not message.is_cc():
         return
 
     for controller in controllers:
-        controller.set_value(msg.channel, msg.control, msg.value)
+        controller.set_value(message.channel, message.control, message.value)
 
-print('Output ports:', mido.get_output_names())
-launch_control_xl_output = [port for port in mido.get_output_names() if "Launch Control XL" in port][0]
-print('Launch Control XL output:', launch_control_xl_output)
-outport = mido.open_output(launch_control_xl_output)
+partial_input_name = 'Launch Control XL'
+partial_output_name = 'Launch Control XL'
+inport = None
+outport = None
 
-print('Input ports:', mido.get_input_names())
-launch_control_xl_input = [port for port in mido.get_input_names() if 'Launch Control XL' in port][0]
-print('Launch Control XL input:', launch_control_xl_input)
-inport = mido.open_input(launch_control_xl_input, callback=receive_midi_message)
+def get_ports():
+    global inport, outport
+
+    if inport and outport:
+        return inport, outport
+
+    inport = None
+    outport = None
+
+    try:
+        input_port_names = mido.get_input_names()
+        output_port_names = mido.get_output_names()
+    except:
+        print('Failed to get ports')
+        return None, None
+
+    input_port_name = next((name for name in input_port_names if partial_input_name in name), None)
+    output_port_name = next((name for name in output_port_names if partial_output_name in name), None)
+    if input_port_name is None or output_port_name is None:
+        return None, None
+
+    inport = mido.open_input(input_port_name, callback=receive_midi_message)
+    print('Opened MIDI input', inport.name)
+    outport = mido.open_output(output_port_name)
+    print('Opened MIDI output', outport.name)
+
+    return inport, outport
+
+def reset_ports():
+    global inport, outport
+    if inport:
+        print('Closing MIDI input', inport.name)
+        inport = None
+    if outport:
+        print('Closing MIDI output', outport.name)
+        outport = None
+
+inport, outport = get_ports()
 
 midi_out_device = '/dev/serial0'
 midi_out = os.path.exists(midi_out_device) and serial.Serial(midi_out_device, baudrate=31250) or None
