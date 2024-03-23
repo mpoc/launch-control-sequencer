@@ -31,6 +31,7 @@ def send_usb_midi_message(message: mido.Message):
         if outport:
             outport.send(message)
     except Exception as e:
+        print(e)
         reset_ports()
 
 def set_led_color(led_index, color):
@@ -291,7 +292,7 @@ class Controller:
         self.sequencer = sequencer
         self.step_index = step_index
         self.is_current_step = is_current_step
-        self.set_led_color()
+        self.set_led_color(self.get_led_color())
 
     def set_value(self, midi_channel, cc_number, cc_value):
         if midi_channel != self.midi_channel:
@@ -303,13 +304,13 @@ class Controller:
         old_cc_value = self.cc_value
         self.cc_value = cc_value
         if old_cc_value is None and cc_value is not None:
-            self.set_led_color()
+            self.set_led_color(self.get_led_color())
 
     def set_is_current_step(self, is_current_step):
         old_is_current_step = self.is_current_step
         self.is_current_step = is_current_step
         if old_is_current_step != is_current_step:
-            self.set_led_color()
+            self.set_led_color(self.get_led_color())
 
     def get_led_color(self):
         if self.cc_value is None:
@@ -317,11 +318,14 @@ class Controller:
         else:
             return COLORS['GREEN_3'] if self.is_current_step else COLORS['GREEN_1']
 
-    def set_led_color(self):
+    def set_led_color(self, color=None):
         if self.led_index is None:
             return
 
-        set_led_color(self.led_index, self.get_led_color())
+        if color is None:
+            return
+
+        set_led_color(self.led_index, color)
 
 controllers = []
 
@@ -598,9 +602,11 @@ def reset_ports():
     global inport, outport
     if inport:
         print('Closing MIDI input', inport.name)
+        inport.close()
         inport = None
     if outport:
         print('Closing MIDI output', outport.name)
+        outport.close()
         outport = None
 
 inport, outport = get_ports()
