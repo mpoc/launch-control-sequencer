@@ -736,15 +736,11 @@ class Clock:
 
 clock = Clock(bpm=BPM)
 sequencer = Sequencer(
-    total_steps=8,
+    total_steps=16,
     clock=clock,
-    note_controller_row=SEND_A,
-    button_row=TRACK_FOCUS,
-    cv_controller_rows=[
-        SEND_B,
-        PAN_DEVICE,
-        FADERS,
-    ],
+    note_controller_row=SEND_A + PAN_DEVICE,
+    button_row=TRACK_FOCUS + TRACK_CONTROL,
+    cv_controller_rows=[SEND_B + FADERS],
 )
 
 while True:
