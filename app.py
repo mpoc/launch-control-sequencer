@@ -526,6 +526,8 @@ class Sequencer:
 
         if step_info['duty_cycle'] == 0:
             gate_off()
+            for i, button in enumerate(self.buttons):
+                button.set_is_gate_active(i == step_index)
             return
 
         if step_info['duty_cycle'] < 1:
