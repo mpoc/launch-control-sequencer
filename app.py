@@ -544,6 +544,15 @@ class Sequencer:
             for controller in step_controllers:
                 controller.set_is_current_step(i == step_index)
 
+def receive_midi_message(msg: mido.Message):
+    debug_print('IN:', msg)
+
+    if not msg.is_cc():
+        return
+
+    for controller in controllers:
+        controller.set_value(msg.channel, msg.control, msg.value)
+
 print('Output ports:', mido.get_output_names())
 launch_control_xl_output = [port for port in mido.get_output_names() if "Launch Control XL" in port][0]
 print('Launch Control XL output:', launch_control_xl_output)
@@ -552,18 +561,10 @@ outport = mido.open_output(launch_control_xl_output)
 print('Input ports:', mido.get_input_names())
 launch_control_xl_input = [port for port in mido.get_input_names() if 'Launch Control XL' in port][0]
 print('Launch Control XL input:', launch_control_xl_input)
-inport = mido.open_input(launch_control_xl_input)
+inport = mido.open_input(launch_control_xl_input, callback=receive_midi_message)
 
 midi_out_device = '/dev/serial0'
 midi_out = os.path.exists(midi_out_device) and serial.Serial(midi_out_device, baudrate=31250) or None
-
-def receive_midi_message():
-    while msg := inport.poll():
-        debug_print('IN:', msg)
-        if not msg.is_cc():
-            continue
-        for controller in controllers:
-            controller.set_value(msg.channel, msg.control, msg.value)
 
 class Clock:
     def __init__(self, bpm):
@@ -608,6 +609,5 @@ sequencer = Sequencer(
 )
 
 while True:
-    receive_midi_message()
     clock.set_time()
     time.sleep(0.001)
