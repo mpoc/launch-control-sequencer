@@ -329,6 +329,7 @@ class Sequencer:
         self.clock = clock
         self.current_step = current_step
         self.is_gate_active = False
+        self.is_running = False
 
         self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
         self.note_controllers: list[Controller] = []
@@ -409,12 +410,21 @@ class Sequencer:
 
         tempo_button.on_button_down.append(self.add_tempo_tap)
 
+        self.run_button = Button(
+            cc_number=UP['cc_number'],
+            led_index=UP['led_index'],
+        )
+        self.run_button.set_led_color(COLORS['RED_3'] if self.is_running else COLORS['OFF'])
+        self.run_button.on_button_down.append(self.run)
+
         reset_button = Button(
             cc_number=DOWN['cc_number'],
             led_index=DOWN['led_index'],
         )
         reset_button.set_led_color(COLORS['RED_3'])
         reset_button.on_button_down.append(self.reset)
+
+        self.run()
 
     def add_tempo_tap(self, button):
         now = time.time()
@@ -436,10 +446,16 @@ class Sequencer:
         self.clock.bpm = bpm
         self.clock.interval = interval
 
+    def run(self, button=None):
+        self.is_running = not self.is_running
+        self.run_button.set_led_color(COLORS['RED_3'] if self.is_running else COLORS['OFF'])
+        self.clock.run()
+
     def reset(self, button):
         self.is_gate_active = False
         self.clock.reset()
         self.step(0)
+        self.output_gate_off()
 
     def get_first_reset_index(self):
         first_reset_index = None
@@ -518,34 +534,34 @@ class Sequencer:
 
         self.output_pulse(trigger_on, trigger_off)
 
+    def output_gate_on(self, step_info):
+        if self.is_gate_active:
+            return
+        self.output_trigger(step_info)
+        self.is_gate_active = True
+
+        debug_print('gate on')
+        send_midi_message(mido.Message('control_change', channel=0, control=GATE_CC, value=127))
+
+    def output_gate_off(self):
+        if not self.is_gate_active:
+            return
+        self.is_gate_active = False
+
+        debug_print('gate off')
+        send_midi_message(mido.Message('control_change', channel=0, control=GATE_CC, value=0))
+
     def output_gate(self, step_info, step_index):
-        def gate_on():
-            if self.is_gate_active:
-                return
-            self.output_trigger(step_info)
-            self.is_gate_active = True
-
-            debug_print('gate on')
-            send_midi_message(mido.Message('control_change', channel=0, control=GATE_CC, value=127))
-
-        def gate_off():
-            if not self.is_gate_active:
-                return
-            self.is_gate_active = False
-
-            debug_print('gate off')
-            send_midi_message(mido.Message('control_change', channel=0, control=GATE_CC, value=0))
-
         if step_info['duty_cycle'] == 0:
-            gate_off()
+            self.output_gate_off()
             for i, button in enumerate(self.buttons):
                 button.set_is_gate_active(i == step_index)
             return
 
         if step_info['duty_cycle'] < 1:
-            self.output_pulse(gate_on, gate_off, end_time=step_info['duty_cycle'] * self.clock.interval)
+            self.output_pulse(lambda: self.output_gate_on(step_info), self.output_gate_off, end_time=step_info['duty_cycle'] * self.clock.interval)
         else:
-            gate_on()
+            self.output_gate_on(step_info)
 
         for i, button in enumerate(self.buttons):
             button.set_is_gate_active(i == step_index)
@@ -663,6 +679,7 @@ midi_out = os.path.exists(midi_out_device) and serial.Serial(midi_out_device, ba
 
 class Clock:
     def __init__(self, bpm):
+        self.is_running = False
         self.bpm = bpm
         self.interval = 60 / bpm
         self.time = time.time()
@@ -673,10 +690,17 @@ class Clock:
 
         self.on_tick(self.reset_on_interval_percent_callbacks)
 
+    def run(self):
+        self.is_running = not self.is_running
+        self.reset()
+
     def reset(self):
         self.time = time.time()
 
     def set_time(self):
+        if not self.is_running:
+            return
+
         old_time = self.time
         new_time = time.time()
         diff = new_time - old_time
