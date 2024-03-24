@@ -299,6 +299,11 @@ class Controller:
         self.cc_value = cc_value
         if old_cc_value is None and cc_value is not None:
             self.set_led_color(self.get_led_color())
+        if old_cc_value != cc_value:
+            if self.is_current_step:
+                step_info = self.sequencer.get_step_info(self.step_index)
+                self.sequencer.output_note(step_info)
+                self.sequencer.output_cvs(step_info)
 
     def set_is_current_step(self, is_current_step):
         old_is_current_step = self.is_current_step
