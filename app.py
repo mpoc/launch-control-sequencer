@@ -5,6 +5,7 @@ import serial
 import collections
 from controller_config import *
 from colors import *
+from utils import *
 
 DEBUG = os.environ.get('DEBUG')
 BPM = int(os.environ.get('BPM', 240))
@@ -328,6 +329,12 @@ class Controller:
 
 controllers = []
 
+CV_OCD_MIDI_0V = 24
+CV_OCD_MIDI_8V = 120
+
+def get_cv_ocd_midi_value(volts: float):
+    return remap_clamped_int(volts, 0, 127, CV_OCD_MIDI_0V, CV_OCD_MIDI_8V)
+
 class Sequencer:
     def __init__(self, total_steps: int, clock, note_controller_row, button_row, cv_controller_rows=[], current_step=0):
         self.total_steps = total_steps
@@ -335,6 +342,7 @@ class Sequencer:
         self.current_step = current_step
         self.is_gate_active = False
         self.is_running = False
+        self.note_range = 8 # Volts
 
         self.step_controllers: list[list[Controller | Button]] = [[] for i in range(total_steps)]
         self.note_controllers: list[Controller] = []
@@ -506,6 +514,9 @@ class Sequencer:
         if note_controller.cc_value is not None:
             note = note_controller.cc_value
 
+        # Scale to CV.OCD range
+        note = remap_clamped_int(note, 0, 127, CV_OCD_MIDI_0V, get_cv_ocd_midi_value(self.note_range))
+
         cvs = [0, 0, 0]
         for i, cv_controller in enumerate(self.cv_controllers[step]):
             value = cv_controller.cc_value
@@ -578,7 +589,6 @@ class Sequencer:
             return
 
         def note_on():
-            # TODO: Scale and quantize
             debug_print('note', step_info['note'])
             send_midi_message(mido.Message('note_on', channel=0, note=step_info['note'], velocity=127))
 
