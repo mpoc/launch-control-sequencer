@@ -6,6 +6,7 @@ import collections
 from controller_config import *
 from colors import *
 from utils import *
+from cvocd import *
 
 DEBUG = os.environ.get('DEBUG')
 BPM = int(os.environ.get('BPM', 240))
@@ -328,12 +329,6 @@ class Controller:
         set_led_color(self.led_index, color)
 
 controllers = []
-
-CV_OCD_MIDI_0V = 24
-CV_OCD_MIDI_8V = 120
-
-def get_cv_ocd_midi_value(volts: float):
-    return remap_clamped_int(volts, 0, 127, CV_OCD_MIDI_0V, CV_OCD_MIDI_8V)
 
 class Sequencer:
     def __init__(self, total_steps: int, clock, note_controller_row, button_row, cv_controller_rows=[], current_step=0):
