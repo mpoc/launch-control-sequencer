@@ -19,15 +19,6 @@ def debug_print(*args, **kwargs):
 def noop(*args, **kwargs):
     pass
 
-def color_components_to_color_byte(components):
-    return components['red'] + (components['green'] << 4)
-
-def color_byte_to_color_components(byte):
-    return {
-        'red': byte & 15,
-        'green': byte >> 4,
-    }
-
 def send_usb_midi_message(message: mido.Message):
     try:
         inport, outport = get_ports()

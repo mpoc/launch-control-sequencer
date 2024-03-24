@@ -16,3 +16,12 @@ COLORS = {
 	'GREEN_YELLOW_3': { 'red': 2, 'green': 3 },
 	'MORE_GREEN_YELLOW_3': { 'red': 1, 'green': 3 },
 }
+
+def color_components_to_color_byte(components):
+    return components['red'] + (components['green'] << 4)
+
+def color_byte_to_color_components(byte):
+    return {
+        'red': byte & 15,
+        'green': byte >> 4,
+    }
