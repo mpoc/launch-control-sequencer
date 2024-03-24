@@ -25,6 +25,7 @@ def set_led_color(led_index, color):
     message = mido.Message('sysex', data=[0, 32, 41, 2, 17, 120, template_index, led_index, color_byte])
     send_usb_midi_message(message)
 
+NOTE_CC = 51
 CV1_CC = 52
 CV2_CC = 53
 CV3_CC = 54
@@ -286,8 +287,10 @@ class Controller:
         if old_cc_value != cc_value:
             if self.is_current_step:
                 step_info = self.sequencer.get_step_info(self.step_index)
-                self.sequencer.output_note(step_info)
-                self.sequencer.output_cvs(step_info)
+                if self in self.sequencer.note_controllers:
+                    self.sequencer.output_note(step_info)
+                if self in self.sequencer.cv_controllers[self.step_index]:
+                    self.sequencer.output_cvs(step_info)
 
     def set_is_current_step(self, is_current_step):
         old_is_current_step = self.is_current_step
