@@ -8,16 +8,7 @@ from colors import *
 from utils import *
 from cvocd import *
 
-DEBUG = os.environ.get('DEBUG')
 BPM = int(os.environ.get('BPM', 240))
-
-def debug_print(*args, **kwargs):
-    if not DEBUG:
-        return
-    print(*args, **kwargs)
-
-def noop(*args, **kwargs):
-    pass
 
 def send_usb_midi_message(message: mido.Message):
     try:
