@@ -686,7 +686,7 @@ class Clock:
         self.on_tick(self.reset_on_interval_percent_callbacks)
 
         for i in range(1, 25):
-            self.on_interval_percent(i / 24, send_midi_message(mido.Message('clock')))
+            self.on_interval_percent(i / 24, lambda: send_midi_message(mido.Message('clock')))
 
     def run(self):
         self.is_running = not self.is_running
