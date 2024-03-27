@@ -678,6 +678,7 @@ class Clock:
         self.bpm = bpm
         self.interval = 60 / bpm
         self.time = time.time()
+        self.next_run_start = True
         self.on_tick_callbacks = []
         self.once_time_callbacks = []
         self.on_interval_percent_callbacks = []
@@ -689,10 +690,22 @@ class Clock:
             self.on_interval_percent(i / 24, lambda: send_midi_message(mido.Message('clock')))
 
     def run(self):
+        if self.is_running:
+            send_midi_message(mido.Message('stop'))
+        elif self.next_run_start:
+            send_midi_message(mido.Message('start'))
+            self.next_run_start = False
+        else:
+            send_midi_message(mido.Message('continue'))
+
         self.is_running = not self.is_running
-        self.reset()
+        self.time = time.time()
 
     def reset(self):
+        if self.is_running:
+            send_midi_message(mido.Message('start'))
+        else:
+            self.next_run_start = True
         self.time = time.time()
 
     def set_time(self):
